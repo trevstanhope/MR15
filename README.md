@@ -45,12 +45,19 @@ Therefore, this subsystem cannot be independent from the sensors.
     
 ## Configuring Boot to Fullscreen
 Edit the LDM config
+
     sudo nano /etc/lightdm/lightdm.conf
+    
 Add the following lines to the [SeatDefaults] section
+
     xserver-command=X -s 0 dpms
+    
 Hide cursor
+
     sudo apt-get install unclutter
+    
 Configure LXDE to start midori on boot
+
     sudo nano /etc/xdg/lxsession/LXDE/autostart 
     # comment everything and add the following lines
     @xset s off
