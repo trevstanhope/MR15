@@ -32,21 +32,21 @@ Therefore, this subsystem cannot be independent from the sensors.
 5. Belt 2 RPM
 
 ## Installing the Splash Screen
-1. Install FBI
+Install FBI
 
     apt-get install fbi
     
-2. Copy your custom splash image to /etc/ and name it "splash.png".
-3. Next, copy the init.d script called "asplashscreen" from "config/" into "/etc/init.d/".
-4. Make it executable
+Copy your custom splash image to /etc/ and name it "splash.png".
+Next, copy the init.d script called "asplashscreen" from "config/" into "/etc/init.d/".
+Make it executable
 
     chmod a+x /etc/init.d/asplashscreen
     
-5. Enable it as an runtime script
+Enable the script as at runtime
 
     insserv asplashscreen
     
-6. Reboot
+Then reboot the system
 
     reboot
     
