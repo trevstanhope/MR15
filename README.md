@@ -73,3 +73,11 @@ Comment everything and add the following lines:
     @xset -dpms
     @xset s noblank
     @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
+    
+## Bootup
+Open /boot/cmdline.txt.
+  
+    sudo nano /boot/cmdline.txt
+    
+Because of slow TTY, printing less info can save some time, add 'quiet'
+Add kernel option 'fastboot' to disable filesystem check
