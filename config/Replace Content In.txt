@@ -1,0 +1,5 @@
+dphys-swapfile(1) - place contents into /etc/init.d/dphys-swapfile
+dphys-swapfile - place contents into /sbin/dphys-swapfile
+fake-hwclock - place contents into /etc/init.d/fake-hwclock 
+init-functions - place contents into /lib/lsb/init-functions
+20-left-info-blocks - place contents int /lib/lsb/init-functions.d/20-left-info-blocks
