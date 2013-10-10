@@ -33,34 +33,43 @@ Therefore, this subsystem cannot be independent from the sensors.
 
 ## Installing the Splash Screen
 1. Install FBI
+
     apt-get install fbi
+    
 2. Copy your custom splash image to /etc/ and name it "splash.png".
 3. Next, copy the init.d script called "asplashscreen" from "config/" into "/etc/init.d/".
 4. Make it executable
+
     chmod a+x /etc/init.d/asplashscreen
+    
 5. Enable it as an runtime script
+
     insserv asplashscreen
+    
 6. Reboot
+
     reboot
     
 ## Configuring Boot to Fullscreen
-Edit the LDM config
+Edit the LDM config:
 
     sudo nano /etc/lightdm/lightdm.conf
     
-Add the following lines to the [SeatDefaults] section
+Add the following lines to the [SeatDefaults] section:
 
     xserver-command=X -s 0 dpms
     
-Hide cursor
+Hide cursor:
 
     sudo apt-get install unclutter
     
-Configure LXDE to start midori on boot
+Open LXDE configuration file:
 
     sudo nano /etc/xdg/lxsession/LXDE/autostart 
-    # comment everything and add the following lines
+    
+Comment everything and add the following lines:
+
     @xset s off
     @xset -dpms
     @xset s noblank
-    @midori -e Fullscreen -a http://mutrac.com
+    @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
