@@ -7,61 +7,41 @@
 #define KILL_HITCH_PIN 3
 #define KILL_BUTTON_PIN 4
 #define LOCK_GUARD_PIN 5
-#define LOCK_BRAKES_PIN 6
-#define IGNITION_PIN 7
+#define LOCK_RIGHTBRAKE_PIN 6
+#define LOCK_LEFTBRAKE_PIN 7
+#define IGNITION_PIN 8
+#define BAUD 115200
 
 /* Global Values */
-static int BAUD = 9600;
 char SENSORS[128];
-int KILL = 0;
-int LOCK = 0;
+int SEAT = 0;
+int HITCH = 0;
 int IGNITION = 0;
+int BUTTON = 0;
+int GUARD = 0;
+int LEFTBRAKE = 0;
+int RIGHTBRAKE = 0;
 
 void setup() {
   pinMode(KILL_SEAT_PIN, INPUT);
   pinMode(KILL_HITCH_PIN, INPUT);
   pinMode(KILL_BUTTON_PIN, INPUT);
   pinMode(LOCK_GUARD_PIN, INPUT);
-  pinMode(LOCK_BRAKES_PIN, INPUT);
+  pinMode(LOCK_LEFTBRAKE_PIN, INPUT);
+  pinMode(LOCK_RIGHTBRAKE_PIN, INPUT);
   pinMode(IGNITION_PIN, INPUT);
   Serial.begin(BAUD);
 }
 
 /* Loop */
 void loop() {
-  KILL = kill();
-  LOCK = lock();
-  IGNITION = ignition();
-  sprintf(SENSORS, "{'kill':%d,'lock':%d,'ignition':%d}",KILL,LOCK,IGNITION); // concatenate message string
+  SEAT = digitalRead(KILL_SEAT_PIN);
+  HITCH = digitalRead(KILL_HITCH_PIN);
+  BUTTON = digitalRead(KILL_BUTTON_PIN);
+  GUARD = digitalRead(LOCK_GUARD_PIN);
+  LEFTBRAKE = digitalRead(LOCK_LEFTBRAKE_PIN);
+  RIGHTBRAKE = digitalRead(LOCK_RIGHTBRAKE_PIN);
+  sprintf(SENSORS, "{'seat':%d,'hitch':%d,'button':%d,'left_brake':%d,'right_brake':%d,'guard':%d,'ignition':%d}",SEAT,HITCH,BUTTON,LEFTBRAKE,RIGHTBRAKE,GUARD,IGNITION); // concatenate message string
   Serial.println(SENSORS);
 }
 
-/* Check Killswitches */
-int kill(void) {
-  if (digitalRead(KILL_SEAT_PIN) || digitalRead(KILL_HITCH_PIN) || digitalRead(KILL_BUTTON_PIN)) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-/* Check Locks */
-int lock(void) {
-  if (digitalRead(LOCK_GUARD_PIN) || digitalRead(LOCK_BRAKES_PIN)) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-/* Check Ignition */
-int ignition(void) {
-  if (digitalRead(IGNITION_PIN)) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
