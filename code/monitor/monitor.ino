@@ -14,14 +14,15 @@
 
 /* Global Values */
 char SENSORS[128];
-int SEAT = 0;
-int HITCH = 0;
-int IGNITION = 0;
-int BUTTON = 0;
-int GUARD = 0;
-int LEFTBRAKE = 0;
-int RIGHTBRAKE = 0;
+volatile int SEAT = 0;
+volatile int HITCH = 0;
+volatile int IGNITION = 0;
+volatile int BUTTON = 0;
+volatile int GUARD = 0;
+volatile int LEFTBRAKE = 0;
+volatile int RIGHTBRAKE = 0;
 
+/* Setup Pins */
 void setup() {
   pinMode(KILL_SEAT_PIN, INPUT);
   pinMode(KILL_HITCH_PIN, INPUT);
@@ -30,6 +31,13 @@ void setup() {
   pinMode(LOCK_LEFTBRAKE_PIN, INPUT);
   pinMode(LOCK_RIGHTBRAKE_PIN, INPUT);
   pinMode(IGNITION_PIN, INPUT);
+  digitalWrite(KILL_SEAT_PIN, HIGH);
+  digitalWrite(KILL_HITCH_PIN, HIGH);
+  digitalWrite(KILL_BUTTON_PIN, HIGH);
+  digitalWrite(LOCK_GUARD_PIN, HIGH);
+  digitalWrite(LOCK_LEFTBRAKE_PIN, HIGH);
+  digitalWrite(LOCK_RIGHTBRAKE_PIN, HIGH);
+  digitalWrite(IGNITION_PIN, HIGH);
   Serial.begin(BAUD);
 }
 
