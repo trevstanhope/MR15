@@ -10,28 +10,30 @@ The steering sub-system would consist of three components
 2. Steering Input (steering wheel)
 3. Steering Position (steering potentiometer)
 
-### CVT
-The CVT requires input from multiple sensors for optimization.
-Therefore, this subsystem cannot be independent from the sensors.
+### Dynamic Ballast
 1. Ballast Motor
-2. CVT Actuator
+2. Near Limitswitch
+3. Far Limitswitch
 
-### Engine and Safety
-1. Killswitch seat
-2. Killswitch button
-3. Killswitch hitch
-4. Lockswitch brakes
-5. Lockswitch guard
-6. Ignition
+### Engine
+1. Engine Stop Relay
+2. Regulator and Fuel Solenoid Relay
+3. Starter Relay
+
+### Safety
+1. Seat Killswitch
+2. Button Killswitch
+3. Hitch Killswitch
+4. Brake Lockswitches
+5. CVT Guard Lockswitch
 
 ### Sensors
 1. Front Wheel RPM
 2. Rear Wheel RPM
-3. Fuel rate1
-4. Belt 1 RPM
-5. Belt 2 RPM
+3. Fuel Flow Rate
 
-## Installing the Splash Screen
+## Configuration
+### Installing the Splash Screen
 Install FBI
 
     apt-get install fbi
@@ -50,7 +52,7 @@ Then reboot the system
 
     reboot
     
-## Configuring Boot to Fullscreen
+### Configuring Boot to Fullscreen
 Edit the LDM config:
 
     sudo nano /etc/lightdm/lightdm.conf
@@ -74,7 +76,7 @@ Comment everything and add the following lines:
     @xset s noblank
     @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
     
-## Kernel
+### Kernel Speed Tweak
 Open /boot/cmdline.txt:
   
     sudo nano /boot/cmdline.txt
@@ -83,7 +85,7 @@ Open /boot/cmdline.txt:
 
     dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootflags=commit=120,data=writeback elevator=deadline noatime  nodiratime  data=writeback rootwait quiet
     
-## System
+### System Speed Tweak
 sudo nano /etc/sysctl.conf
     
     vm.dirty_background_ratio = 20
@@ -94,33 +96,33 @@ sudo nano /etc/sysctl.conf
     vm.laptop_mode = 5
     vm.swappiness = 10
 
-## Disable Getty
+### Disable Getty
 sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab
 
-## Broadcom
+### Disable Broadcom
 sudo modprobe -r snd-bcm2835
 
-## Swap
+### Increase Swap
 echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
 dphys-swapfile setup
 dphys-swapfile swapon
 echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
 
-## Dash
+### Bash to Dash
 dpkg-reconfigure dash
 
-## Preload
+### Preload
 apt-get install -y preload
 sed -i 's/sortstrategy = 3/sortstrategy = 0/g'  /etc/preload.conf
 
-## IPV6
+### IPV6
 echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
 echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
 sed -i '/::/s%^%#%g' /etc/hosts
 
-## Update
+### Update
 wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && chmod +x /usr/bin/rpi-update
 
-## Readahead
+### Readahead
 aptitude install readahead
 touch /etc/readahead/profile-once
