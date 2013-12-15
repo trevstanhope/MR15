@@ -74,10 +74,53 @@ Comment everything and add the following lines:
     @xset s noblank
     @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
     
-## Bootup
-Open /boot/cmdline.txt.
+## Kernel
+Open /boot/cmdline.txt:
   
     sudo nano /boot/cmdline.txt
     
-Because of slow TTY, printing less info can save some time, add 'quiet'
-Add kernel option 'fastboot' to disable filesystem check
+/boot/cmdline.txt
+
+    dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootflags=commit=120,data=writeback elevator=deadline noatime  nodiratime  data=writeback rootwait quiet
+    
+## System
+sudo nano /etc/sysctl.conf
+    
+    vm.dirty_background_ratio = 20
+    vm.dirty_expire_centisecs = 0
+    vm.dirty_ratio = 80
+    vm.dirty_writeback_centisecs = 1200
+    vm.overcommit_ratio = 2
+    vm.laptop_mode = 5
+    vm.swappiness = 10
+
+## Disable Getty
+sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab
+
+## Broadcom
+sudo modprobe -r snd-bcm2835
+
+## Swap
+echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
+dphys-swapfile setup
+dphys-swapfile swapon
+echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
+
+## Dash
+dpkg-reconfigure dash
+
+## Preload
+apt-get install -y preload
+sed -i 's/sortstrategy = 3/sortstrategy = 0/g'  /etc/preload.conf
+
+## IPV6
+echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
+echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
+sed -i '/::/s%^%#%g' /etc/hosts
+
+## Update
+wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && chmod +x /usr/bin/rpi-update
+
+## Readahead
+aptitude install readahead
+touch /etc/readahead/profile-once

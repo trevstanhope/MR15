@@ -1,19 +1,24 @@
 #!/usr/bin/env python
-# Workstation System for the MR15
-# Run-Level 0: STANDBY
-# Run-Level 1: IGNITION
-# Run-Level 2: RUNNING
+
+"""
+Workstation System for the MR15
+Developed by Macdonald Campus ASABE Tractor Pull Team
+"""
+
+# Modules
 import ast
 import serial
 import Tkinter as tk
 import time
 
+# Global
 MONITOR_DEV = '/dev/ttyACM0'
 CONTROLLER_DEV = '/dev/ttyACM1'
 BAUD = 115200
 
 class MR15:
-
+  
+  ## Initialize MR15 systems
   def __init__(self):
     print('[Initializing PLCs]')
     try:
@@ -22,7 +27,8 @@ class MR15:
       self.runlevel = 0
     except Exception as error:
       print('--> ' + str(error))
-    
+  
+  ## 
   def monitor(self):
     print('[Monitoring Tractor]')
     try:
@@ -44,7 +50,7 @@ class MR15:
       print('--> Nothing')
       actions = 0
     return actions
-    
+  
   def control(self, actions):
     print('[Controlling Tractor]')
     try:
@@ -55,17 +61,19 @@ class MR15:
     return error
       
 class Display(object):
+
+  ## Initialize the GUI
   def __init__(self, master, **kwargs):
     print('[Initializing Display]')
     pad = 3
     self.master = master
     self._geom='640x480+0+0'
     master.geometry("{0}x{1}+0+0".format(master.winfo_screenwidth()-pad, master.winfo_screenheight()-pad))
-    self.set_layout() # set the UI layout
-                  
+    self.set_layout() # call the set the UI layout fnc
+  
+  ## Set the layout of the GUI          
   def set_layout(self):
     print('[Setting Layout]')
-    ### Display
     #self.master.overrideredirect(True) # make fullscreen
     self.master.focus_set()
     self.master.state("normal")
@@ -87,15 +95,18 @@ class Display(object):
     sensors_label = tk.Label(self.master, textvariable=self.sensors_var, font=("Helvetica", 24))
     sensors_label.pack()
     sensors_label.place(x=20, y=180)
-    
+  
+  ## Update the error display
   def update_error(self, error):
     self.error_var.set(str(error))
     self.master.update_idletasks()
-      
+  
+  ## Update the speed display
   def update_speed(self, speed):
     self.speed_var.set(str(speed))
     self.master.update_idletasks()
-      
+
+  ## Update the sensors display  
   def update_sensors(self, speed):
     self.sensors_var.set(str(speed))
     self.master.update_idletasks()

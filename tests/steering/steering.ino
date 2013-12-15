@@ -13,7 +13,6 @@ void setup() {
 void loop() {
   STEERING_POSITION = analogRead(STEERING_POSITION_PIN);
   ACTUATOR_POSITION = analogRead(ACTUATOR_POSITION_PIN); // 0 - 1024
-   
   if (ACTUATOR_POSITION > STEERING_POSITION) {
     ACTUATOR.setM1Speed(100)
   }
