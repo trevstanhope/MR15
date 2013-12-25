@@ -16,6 +16,13 @@ MONITOR_DEV = '/dev/ttyACM0'
 CONTROLLER_DEV = '/dev/ttyACM1'
 BAUD = 9600
 
+# Commands
+WAIT = 0
+STANDBY = 1
+IGNITION = 2
+RUN = 3
+KILL = 255
+
 # Control system class
 class Control:
   
@@ -53,6 +60,8 @@ class Control:
       sensors = ast.literal_eval(json)
       for key in sensors:
         print('--> ' + key + ':' + str(sensors[key]))
+      if not len(sensors) == 7:
+        sensors = None
     except Exception as error:
       print('--> ' + str(error))
       sensors = None
@@ -63,27 +72,33 @@ class Control:
     print('[Deciding Action]')
     if sensors:
       if (sensors['button'] or sensors['hitch'] or sensors['seat']) == 1:
-        print('--> KILLED')
-        action = 255
+        action = 'KILLED'
+        command = KILL
+        self.state = 'OFF'
       elif sensors['rfid'] == 1:
-        print('--> STANDBY')
-        action = 1
-      else:
+        action = 'STANDBY'
+        command = STANDBY
+        self.state = 'STANDBY'
+      elif self.state == 'STANDBY':
         if sensors['ignition'] == 1:
           if (sensors['guard'] and sensors['brake']) == 0:
-            print('--> IGNITION')
-            action = 2
+            action = 'IGNITION'
+            command = IGNITION
           else:
-            print('--> LOCKED')
-            action = 0
+            action = 'LOCKED'
+            command = WAIT
         else:
-          print('--> NOT IGNITION')
-          action = 2
+          action = 'RUN'
+          command = RUN
+      else:
+        action = 'WAIT'
+        command = WAIT
     else:
-      print('--> READ FAILURE')
-      action = 0
+      action = 'READ FAILURE'
+      command = WAIT
     print('--> ACTION: ' + str(action))
-    return action
+    print('--> COMMAND: ' + str(command))
+    return command
 
   ## Control
   def control(self, actions):

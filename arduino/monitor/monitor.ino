@@ -9,12 +9,14 @@
 #include "stdio.h" // needed for dtostrf()
 
 /* --- Pins --- */
-#define SEAT_PIN 2
-#define HITCH_PIN 3
-#define BUTTON_PIN 4
-#define GUARD_PIN 5
-#define BRAKE_PIN 6
-#define IGNITION_PIN 7
+#define SEAT_PIN 3
+#define HITCH_PIN 4
+#define BUTTON_PIN 5
+#define GUARD_PIN 6
+#define BRAKE_PIN 7
+#define IGNITION_PIN 8
+#define RFID_TX_PIN 9
+#define RFID_RX_PIN 10
 
 /* --- Constants --- */
 const int BAUD = 9600; 

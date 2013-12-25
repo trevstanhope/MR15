@@ -16,7 +16,7 @@
 #define STARTER_RELAY_PIN 4
 
 /* --- Commands --- */
-const int STOP = 0;
+const int KILL = 0;
 const int STANDBY = 1;
 const int IGNITION = 2;
 const int RUN = 3;
