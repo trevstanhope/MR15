@@ -36,21 +36,24 @@ The steering sub-system would consist of three components
 ### Installing the Splash Screen
 Install FBI
 
-    apt-get install fbi
+    sudo apt-get install fbi
     
 Copy your custom splash image to /etc/ and name it "splash.png".
-Next, copy the init.d script called "asplashscreen" from "config/" into "/etc/init.d/".
-Make it executable
+Next, copy the init.d script called "asplashscreen" from "config/" into "/etc/init.d/":
 
-    chmod a+x /etc/init.d/asplashscreen
+    sudo cp config/aplashscreen /etc/init.d/
     
-Enable the script as at runtime
+Make it executable:
 
-    insserv asplashscreen
+    sudo chmod a+x /etc/init.d/asplashscreen
     
-Then reboot the system
+Enable the script as at runtime:
 
-    reboot
+    sudo insserv asplashscreen
+    
+Copy your custom splash image to /etc/ and name it "splash.png".
+
+    sudo cp images/splash.png /etc/
     
 ### Configuring Boot to Fullscreen
 Edit the LDM config:
@@ -81,7 +84,7 @@ Open /boot/cmdline.txt:
   
     sudo nano /boot/cmdline.txt
     
-/boot/cmdline.txt
+Add the following:
 
     dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootflags=commit=120,data=writeback elevator=deadline noatime  nodiratime  data=writeback rootwait quiet
     
