@@ -15,14 +15,16 @@
 #define REGULATOR_RELAY_PIN 3
 #define STARTER_RELAY_PIN 4
 
-/* --- Objects --- */
-DualVNH5019MotorShield MOTORS;
-
-/* --- Constants --- */
+/* --- Commands --- */
 const int STOP = 0;
 const int STANDBY = 1;
 const int IGNITION = 2;
 const int RUN = 3;
+
+/* --- Objects --- */
+DualVNH5019MotorShield MOTORS;
+
+/* --- Constants --- */
 const int BAUD = 115200;
 
 /* --- Variables --- */

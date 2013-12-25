@@ -21,11 +21,27 @@ class Control:
   
   ## Initialize MR15 systems
   def __init__(self):
-    print('[Initializing PLCs]')
+
+    ### Setup Monitor
+    print('[Initializing Monitor PLC]')
     try:
       self.ard_monitor = serial.Serial(MONITOR_DEV, BAUD)
-      self.ard_controller = serial.Serial(CONTROLLER_DEV, BAUD)
-      self.runlevel = 0
+    except Exception as error:
+      print('--> ' + str(error))
+
+    ## Setup Controller
+    print('[Initializing Control PLC]')
+    try:
+      self.ard_controller = serial.Serial(CONTROLLER_DEV, BAUD)      
+    except Exception as error:
+      print('--> ' + str(error))
+
+    ## Setup States
+    print('[Initializing States]')
+    try:
+      self.state = 0
+      self.steering = 0
+      self.ballast = 0
     except Exception as error:
       print('--> ' + str(error))
   
@@ -35,23 +51,39 @@ class Control:
     try:
       json = self.ard_monitor.readline()
       sensors = ast.literal_eval(json)
-      error = None
-      print('--> ' + str(json))
+      for key in sensors:
+        print('--> ' + key + ':' + str(sensors[key]))
     except Exception as error:
-      sensors = {}
       print('--> ' + str(error))
-    return (sensors, error)
+      sensors = None
+    return sensors
 
   ## Decide Action
   def decide(self, sensors):
     print('[Deciding Action]')
     if sensors:
-      print('--> Working')
-      actions = 1
+      if (sensors['button'] or sensors['hitch'] or sensors['seat']) == 1:
+        print('--> KILLED')
+        action = 255
+      elif sensors['rfid'] == 1:
+        print('--> STANDBY')
+        action = 1
+      else:
+        if sensors['ignition'] == 1:
+          if (sensors['guard'] and sensors['brake']) == 0:
+            print('--> IGNITION')
+            action = 2
+          else:
+            print('--> LOCKED')
+            action = 0
+        else:
+          print('--> NOT IGNITION')
+          action = 2
     else:
-      print('--> Nothing')
-      actions = 0
-    return actions
+      print('--> READ FAILURE')
+      action = 0
+    print('--> ACTION: ' + str(action))
+    return action
 
   ## Control
   def control(self, actions):
@@ -68,7 +100,8 @@ class Display(object):
 
   ## Initialize the GUI
   def __init__(self, master, **kwargs):
-    
+
+    ### Initialize Display
     print('[Initializing Display]')
     pad = 3
     self.master = master
@@ -131,11 +164,10 @@ if __name__ == '__main__':
   ## Operation loop
   while True:
     a = time.time()
-    (sensors, error) = tractor.monitor()
-    app.update_sensors(sensors)
-    app.update_error(error)
+    sensors = tractor.monitor()
     actions = tractor.decide(sensors)
     error = tractor.control(actions)
+    app.update_sensors(sensors)
     app.update_error(error)
     b = time.time()
     app.update_speed((b-a))
