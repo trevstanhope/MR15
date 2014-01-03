@@ -14,9 +14,10 @@ import time
 # Global
 MONITOR_DEV = '/dev/ttyACM0'
 CONTROLLER_DEV = '/dev/ttyACM1'
-BAUD = 115200
+BAUD = 9600
 
-class MR15:
+# Control system class
+class Control:
   
   ## Initialize MR15 systems
   def __init__(self):
@@ -28,7 +29,7 @@ class MR15:
     except Exception as error:
       print('--> ' + str(error))
   
-  ## 
+  ## Monitor
   def monitor(self):
     print('[Monitoring Tractor]')
     try:
@@ -40,7 +41,8 @@ class MR15:
       sensors = {}
       print('--> ' + str(error))
     return (sensors, error)
-    
+
+  ## Decide Action
   def decide(self, sensors):
     print('[Deciding Action]')
     if sensors:
@@ -50,7 +52,8 @@ class MR15:
       print('--> Nothing')
       actions = 0
     return actions
-  
+
+  ## Control
   def control(self, actions):
     print('[Controlling Tractor]')
     try:
@@ -59,11 +62,13 @@ class MR15:
     except Exception as error:
       print('--> ' + str(error))
     return error
-      
+
+# Display system 
 class Display(object):
 
   ## Initialize the GUI
   def __init__(self, master, **kwargs):
+    
     print('[Initializing Display]')
     pad = 3
     self.master = master
@@ -73,22 +78,27 @@ class Display(object):
   
   ## Set the layout of the GUI          
   def set_layout(self):
+
+    ### Initialize Layout
     print('[Setting Layout]')
     #self.master.overrideredirect(True) # make fullscreen
     self.master.focus_set()
     self.master.state("normal")
+    
     ### Error Label
     self.error_var = tk.StringVar()
     self.error_var.set('None')
     error_label = tk.Label(self.master, textvariable=self.error_var, font=("Helvetica", 24))
     error_label.pack()
     error_label.place(x=20, y=20)
+    
     ### Loop-speed Label
     self.speed_var = tk.StringVar()
     self.error_var.set('0')
     speed_label = tk.Label(self.master, textvariable=self.speed_var, font=("Helvetica", 24))
     speed_label.pack()
     speed_label.place(x=20, y=100)
+    
     ### Sensors Label
     self.sensors_var = tk.StringVar()
     self.sensors_var.set('0')
@@ -110,25 +120,22 @@ class Display(object):
   def update_sensors(self, speed):
     self.sensors_var.set(str(speed))
     self.master.update_idletasks()
-    
+
+# Main Loop
 if __name__ == '__main__':
 
   ## Initialize objects
   app = Display(tk.Tk())
-  tractor = MR15()
+  tractor = Control()
   
   ## Operation loop
   while True:
     a = time.time()
-    
     (sensors, error) = tractor.monitor()
     app.update_sensors(sensors)
     app.update_error(error)
-    
     actions = tractor.decide(sensors)
-    
     error = tractor.control(actions)
     app.update_error(error)
-    
     b = time.time()
     app.update_speed((b-a))

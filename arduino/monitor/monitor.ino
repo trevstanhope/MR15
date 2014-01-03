@@ -17,7 +17,7 @@
 #define IGNITION_PIN 7
 
 /* --- Constants --- */
-const int BAUD = 115200; 
+const int BAUD = 9600; 
 
 /* --- Variables --- */
 char SENSORS[128];
@@ -27,6 +27,7 @@ volatile int IGNITION = 0;
 volatile int BUTTON = 0;
 volatile int GUARD = 0;
 volatile int BRAKE = 0;
+volatile int RFID = 0;
 
 /* --- Setup --- */
 void setup() {
@@ -40,17 +41,16 @@ void setup() {
   pinMode(IGNITION_PIN, INPUT);
 
   // Normally One - Enable Resistor
-  digitalWrite(SEAT_PIN, HIGH);
-  digitalWrite(HITCH_PIN, HIGH);
-  digitalWrite(BUTTON_PIN, HIGH);
-  digitalWrite(GUARD_PIN, HIGH);
-  digitalWrite(BRAKE_PIN, HIGH);
-  digitalWrite(IGNITION_PIN, HIGH);
+  digitalWrite(SEAT_PIN, LOW);
+  digitalWrite(HITCH_PIN, LOW);
+  digitalWrite(BUTTON_PIN, LOW);
+  digitalWrite(GUARD_PIN, LOW);
+  digitalWrite(BRAKE_PIN, LOW);
+  digitalWrite(IGNITION_PIN, LOW);
 
   // Initialize Serial
   delay(1000);
   Serial.begin(BAUD);
-
 }
 
 /* --- Loop --- */
@@ -63,12 +63,23 @@ void loop() {
   GUARD = digitalRead(GUARD_PIN);
   BRAKE = digitalRead(BRAKE_PIN);
   IGNITION = digitalRead(IGNITION_PIN);
+  RFID = check_rfid();
 
   // Convert to string
-  sprintf(SENSORS, "{'seat':%d,'hitch':%d,'button':%d,'brake':%d,'guard':%d,'ignition':%d}",SEAT,HITCH,BUTTON,BRAKE,GUARD,IGNITION); // concatenate message string
+  sprintf(SENSORS, "{'seat':%d,'hitch':%d,'button':%d,'brake':%d,'guard':%d,'ignition':%d, 'rfid':%d}",SEAT,HITCH,BUTTON,BRAKE,GUARD,IGNITION,RFID);
 
   // Send over serial
   Serial.println(SENSORS);
   Serial.flush();
+}
+
+/* --- Methods --- */
+int check_rfid() {
+  if (Serial.available()) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
 }
 
