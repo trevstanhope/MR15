@@ -12,3 +12,7 @@ sudo cp images/splash.png /etc/
 sudo cp config/asplashscreen /etc/init.d/
 sudo chmod a+x /etc/init.d/asplashscreen
 sudo insserv asplashscreen
+
+## Boot
+sudo cp config/cmdline.txt /boot/
+sudo chmod a+x /boot/cmdline.txt
