@@ -49,7 +49,9 @@ sudo nano /etc/sysctl.conf
     vm.swappiness = 10
 
 ### Disable Getty (Optional)
-sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab
+Disable the unused terminals
+    
+    sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab
 
 ### Disable Broadcom (Optional)
 You can optionally disable Broadcom
@@ -57,19 +59,27 @@ You can optionally disable Broadcom
     sudo modprobe -r snd-bcm2835
 
 ### Increase Swap (Optional)
-echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
-dphys-swapfile setup
-dphys-swapfile swapon
-echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
+Can increase the amount of swap (i.e. SD use)
+
+    echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
+    dphys-swapfile setup
+    dphys-swapfile swapon
+    echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
 
 ### Bash to Dash (Optional)
-dpkg-reconfigure dash
+Enable dash by disabling bash
+
+    dpkg-reconfigure dash
 
 ### Preload (Optional)
-apt-get install -y preload
-sed -i 's/sortstrategy = 3/sortstrategy = 0/g'  /etc/preload.conf
+Preload loads things ahead of time, not as effective as it sounds.
+    
+    apt-get install -y preload
+    sed -i 's/sortstrategy = 3/sortstrategy = 0/g'  /etc/preload.conf
 
 ### IPV6 (Optional)
-echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
-echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
-sed -i '/::/s%^%#%g' /etc/hosts
+IPV6 not needed, IPV4 can be kept during testing.
+
+  echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
+  echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
+  sed -i '/::/s%^%#%g' /etc/hosts
