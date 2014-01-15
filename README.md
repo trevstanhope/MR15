@@ -80,6 +80,6 @@ Preload loads things ahead of time, not as effective as it sounds.
 ### IPV6 (Optional)
 IPV6 not needed, IPV4 can be kept during testing.
 
-  echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
-  echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
-  sed -i '/::/s%^%#%g' /etc/hosts
+    echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
+    echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
+    sed -i '/::/s%^%#%g' /etc/hosts
