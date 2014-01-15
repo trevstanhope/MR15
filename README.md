@@ -38,7 +38,11 @@ Comment everything and add the following lines:
     @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
     
 ### System Speed Tweak (Optional)
-sudo nano /etc/sysctl.conf
+Open the system control file:
+
+    sudo nano /etc/sysctl.conf
+    
+And add the following lines:
     
     vm.dirty_background_ratio = 20
     vm.dirty_expire_centisecs = 0
