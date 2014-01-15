@@ -1,61 +1,19 @@
 # Mutrac MR15
 
-## Sub-Systems
+## Installation
+Just run the following from your $HOME directory:
 
-### Steering
-Steering must be available whenever the vehicle is ON.
-This requires an Arduino which should run independently of all other processes.
-The steering sub-system would consist of three components
-1. Actuator (steering)
-2. Steering Input (steering wheel)
-3. Steering Position (steering potentiometer)
-
-### Dynamic Ballast
-1. Ballast Motor
-2. Near Limitswitch
-3. Far Limitswitch
-
-### Engine
-1. Engine Stop Relay
-2. Regulator and Fuel Solenoid Relay
-3. Starter Relay
-
-### Safety
-1. Seat Killswitch
-2. Button Killswitch
-3. Hitch Killswitch
-4. Brake Lockswitches
-5. CVT Guard Lockswitch
-
-### Sensors
-1. Front Wheel RPM
-2. Rear Wheel RPM
-3. Fuel Flow Rate
-
+    git clone https://github.com/mutrac/MR15
+    cd MR15
+    chmod +x install.sh
+    ./install.sh
+   
 ## Configuration
-### Installing the Splash Screen
-Install FBI
+### Configuring Arduinos (IMPORTANT)
+The Controller and Monitor subsystems must be loaded to their respective PLC.
+Please check the README.md
 
-    sudo apt-get install fbi
-    
-Copy your custom splash image to /etc/ and name it "splash.png".
-Next, copy the init.d script called "asplashscreen" from "config/" into "/etc/init.d/":
-
-    sudo cp config/aplashscreen /etc/init.d/
-    
-Make it executable:
-
-    sudo chmod a+x /etc/init.d/asplashscreen
-    
-Enable the script as at runtime:
-
-    sudo insserv asplashscreen
-    
-Copy your custom splash image to /etc/ and name it "splash.png".
-
-    sudo cp images/splash.png /etc/
-    
-### Configuring Boot to Fullscreen
+### Configuring Boot to Fullscreen (IMPORTANT)
 Edit the LDM config:
 
     sudo nano /etc/lightdm/lightdm.conf
@@ -79,16 +37,7 @@ Comment everything and add the following lines:
     @xset s noblank
     @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
     
-### Kernel Speed Tweak
-Open /boot/cmdline.txt:
-  
-    sudo nano /boot/cmdline.txt
-    
-Add the following:
-
-    dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootflags=commit=120,data=writeback elevator=deadline noatime  nodiratime  data=writeback rootwait quiet
-    
-### System Speed Tweak
+### System Speed Tweak (Optional)
 sudo nano /etc/sysctl.conf
     
     vm.dirty_background_ratio = 20
@@ -99,33 +48,28 @@ sudo nano /etc/sysctl.conf
     vm.laptop_mode = 5
     vm.swappiness = 10
 
-### Disable Getty
+### Disable Getty (Optional)
 sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab
 
-### Disable Broadcom
-sudo modprobe -r snd-bcm2835
+### Disable Broadcom (Optional)
+You can optionally disable Broadcom
 
-### Increase Swap
+    sudo modprobe -r snd-bcm2835
+
+### Increase Swap (Optional)
 echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
 dphys-swapfile setup
 dphys-swapfile swapon
 echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
 
-### Bash to Dash
+### Bash to Dash (Optional)
 dpkg-reconfigure dash
 
-### Preload
+### Preload (Optional)
 apt-get install -y preload
 sed -i 's/sortstrategy = 3/sortstrategy = 0/g'  /etc/preload.conf
 
-### IPV6
+### IPV6 (Optional)
 echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf
 echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
 sed -i '/::/s%^%#%g' /etc/hosts
-
-### Update
-wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && chmod +x /usr/bin/rpi-update
-
-### Readahead
-aptitude install readahead
-touch /etc/readahead/profile-once
