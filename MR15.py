@@ -104,36 +104,36 @@ class Display(object):
         
         ## Fuel Label
         self.fuel_var = tk.StringVar()
-        self.fuel_var.set('Fuel Rate: ?')
+        self.fuel_var.set('Fuel Rate (L/H): ?')
         fuel_label = tk.Label(
             self.master,
             textvariable=self.fuel_var,
             font=("Helvetica", 24)
         )
         fuel_label.pack()
-        fuel_label.place(x=20, y=140)
+        fuel_label.place(x=20, y=100)
         
         ## Wheel Label
         self.wheel_var = tk.StringVar()
-        self.wheel_var.set('Wheel Rate: ?')
+        self.wheel_var.set('Wheel Rate (RPM): ?')
         wheel_label = tk.Label(
             self.master,
             textvariable=self.wheel_var,
             font=("Helvetica", 24)
         )
         wheel_label.pack()
-        wheel_label.place(x=20, y=180)
+        wheel_label.place(x=20, y=140)
         
         ## Frequency Label
         self.freq_var = tk.StringVar()
-        self.freq_var.set('Update Rate: ?')
+        self.freq_var.set('Frequency (Hz): ?')
         freq_label = tk.Label(
             self.master,
             textvariable=self.freq_var,
             font=("Helvetica", 24)
         )
         freq_label.pack()
-        freq_label.place(x=20, y=220)
+        freq_label.place(x=20, y=60)
         
         ## Brakes Label
         self.brakes_var = tk.StringVar()
@@ -144,7 +144,7 @@ class Display(object):
             font=("Helvetica", 24)
         )
         brakes_label.pack()
-        brakes_label.place(x=20, y=260)
+        brakes_label.place(x=20, y=360)
         
         ## Guard Label
         self.guard_var = tk.StringVar()
@@ -155,16 +155,28 @@ class Display(object):
             font=("Helvetica", 24)
         )
         guard_label.pack()
-        guard_label.place(x=20, y=300)
+        guard_label.place(x=20, y=400)
+        
+        ## Seat Label
+        self.seat_var = tk.StringVar()
+        self.seat_var.set('Seat: ?')
+        seat_label = tk.Label(
+            self.master,
+            textvariable=self.seat_var,
+            font=("Helvetica", 24)
+        )
+        seat_label.pack()
+        seat_label.place(x=20, y=440)
 
     def update(self, monitor,control,freq):
         print('[Updating Display]')
         if (monitor and control):
-            self.fuel_var.set('Fuel Rate: ' + str(monitor['fuel']))
-            self.wheel_var.set('Wheel Rate: ' + str(monitor['wheel']))
+            self.fuel_var.set('Fuel Rate (L/H): ' + str(monitor['fuel']))
+            self.wheel_var.set('Wheel Rate (RPM): ' + str(monitor['wheel']))
             self.brakes_var.set('Brakes: ' + str(control['brakes']))
+            self.seat_var.set('Seat: ' + str(control['seat']))
             self.guard_var.set('CVT Guard: ' + str(control['guard']))
-        self.freq_var.set('Update Rate: ' + str(freq))
+        self.freq_var.set('Frequency (Hz): ' + str(freq))
         self.master.update_idletasks()
 
 # Main Loop
@@ -180,7 +192,7 @@ if __name__ == '__main__':
             action = tractor.best(sensors)
             response = tractor.send_action(action)
             b = time.time()
-            freq = (b-a)
+            freq = int(1/(b-a))
             display.update(sensors, response, freq)
         except KeyboardInterrupt:
             break
