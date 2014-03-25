@@ -21,17 +21,17 @@ MONITOR_DEV = '/dev/ttyACM0'
 CONTROLLER_DEV = '/dev/ttyACM1'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
-MONITOR_PARAMS = ['lock','ignition','fuel','wheel','rfid']
+MONITOR_PARAMS = ['fuel','wheel']
 
 # Commands
-KILL = '0'
-STANDBY = '1'
-IGNITION = '2'
-BALLAST_UP = '3'
-BALLAST_DOWN = '4'
-STEERING_UP = '5'
-STEERING_DOWN = '6'
-WAIT = '7'
+KILL = 'A'
+STANDBY = 'B'
+IGNITION = 'C'
+BALLAST_UP = 'D'
+BALLAST_DOWN = 'E'
+STEERING_UP = 'F'
+STEERING_DOWN = 'G'
+WAIT = 'H'
 
 # Control system class
 class Tractor:
@@ -48,41 +48,27 @@ class Tractor:
         except Exception as error:
             print('--> ' + str(error))
 
-    def get_current(self):
+    def get_sensors(self):
         print('[Getting Current Sensors]')
         try:
-            json = self.monitor.readline()
-            current = ast.literal_eval(json)
+            literal = self.monitor.readline()
+            sensors = ast.literal_eval(literal)
             # Test to make sure the object is complete
             for key in MONITOR_PARAMS:
                 try:
-                    state[key]
+                    sensors[key]
                 except Exception:
                     return None
-            return current
+            return sensors
         except Exception as error:
             print('--> ' + str(error))
             
     def best(self, current, action=WAIT):
         print('[Deciding Best Action]')
         if current:
-            rfid = current['rfid']
-            lock = current['lock']
-            ballast = current['ballast']
-            ignition = current['rfid']
-            steering = current['steering']
-            if (rfid == 1):
-                action = STANDBY
-            elif (ignition == 1) and (lock == 0):
-                action = IGNITION
-            elif (steering == 1): 
-                action = STEERING_UP
-            elif (steering == -1): 
-                action = STEERING_DOWN
-            elif (ballast == 1):
-                action == BALLAST_UP
-            elif (ballast == -1):
-                action == BALLAST_DOWN
+            fuel = current['fuel']
+            wheel = current['wheel']
+            action = WAIT
         print('--> ' + action)
         return action
 
@@ -90,6 +76,8 @@ class Tractor:
         print('[Sending Action]')
         try:
             response = self.controller.write(action)
+            literal = self.controller.readline()
+            response = ast.literal_eval(literal)
             print('--> ' + action)
             return response
         except Exception as error:
@@ -169,13 +157,13 @@ class Display(object):
         guard_label.pack()
         guard_label.place(x=20, y=300)
 
-    def update(self, current, freq):
+    def update(self, monitor,control,freq):
         print('[Updating Display]')
-        if current:
-            self.fuel_var.set('Fuel Rate: ' + str(current['fuel']))
-            self.wheel_var.set('Wheel Rate: ' + str(current['wheel']))
-            self.brakes_var.set('Brakes: ' + str(current['brakes']))
-            self.guard_var.set('CVT Guard: ' + str(current['guard']))
+        if (monitor and control):
+            self.fuel_var.set('Fuel Rate: ' + str(monitor['fuel']))
+            self.wheel_var.set('Wheel Rate: ' + str(monitor['wheel']))
+            self.brakes_var.set('Brakes: ' + str(control['brakes']))
+            self.guard_var.set('CVT Guard: ' + str(control['guard']))
         self.freq_var.set('Update Rate: ' + str(freq))
         self.master.update_idletasks()
 
@@ -188,10 +176,11 @@ if __name__ == '__main__':
     while True:
         try:
             a = time.time()
-            current = tractor.get_current()
-            action = tractor.best(current)
+            sensors = tractor.get_sensors()
+            action = tractor.best(sensors)
             response = tractor.send_action(action)
             b = time.time()
-            display.update(current, (b-a))
+            freq = (b-a)
+            display.update(sensors, response, freq)
         except KeyboardInterrupt:
             break
