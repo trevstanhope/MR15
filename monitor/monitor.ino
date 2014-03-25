@@ -42,6 +42,7 @@ void count_fuel(void);
 /* --- Constants --- */
 #define BAUD 9600
 #define DHT_TYPE 22
+#define INTERVAL 200
 
 /* --- Objects --- */
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -53,6 +54,7 @@ volatile int FUEL = 0;
 volatile int WHEEL = 0;
 volatile int FUEL_COUNT = 0;
 volatile int WHEEL_COUNT = 0;
+volatile int TIME = 0;
 
 /* --- Buffers --- */
 char SENSORS[128];
@@ -82,13 +84,14 @@ void loop() {
   // Read Sensors
   TEMP = check_temp();
   HUMIDITY = check_humidity();
-  FUEL = check_fuel();
-  WHEEL = check_wheel();
+  FUEL = check_fuel(TIME);
+  WHEEL = check_wheel(TIME);
+  TIME = millis();
 
   // Convert to string and send over serial
   sprintf(SENSORS, "{'temp':%d,'humidity':%d,'fuel':%d,'wheel':%d}", TEMP,HUMIDITY,FUEL,WHEEL);
   Serial.println(SENSORS);
-  delay(20);
+  delay(INTERVAL);
 }
 
 /*
@@ -121,14 +124,18 @@ float check_humidity() {
 
 /* --- Check Wheel -- */
 // Return RPM of wheel
-float check_wheel() {
-  return WHEEL_COUNT;
+float check_wheel(int start) {
+  float val = WHEEL_COUNT / (millis() - start);
+  WHEEL_COUNT = 0;
+  return val;
 }
 
 /* --- Check Fuel -- */
 // Returns LPH of fuel
-float check_fuel() {
-  return FUEL_COUNT;
+float check_fuel(int start) {
+  float val = FUEL_COUNT / (millis() - start);
+  FUEL_COUNT = 0;
+  return val;
 }
 
 /* --- Count Wheel --- */
