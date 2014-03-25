@@ -5,6 +5,7 @@ sudo apt-get update
 sudo apt-get install python-serial -y
 sudo apt-get install python-tk -y
 sudo apt-get install unclutter -y
+sudo apt-get install python-imaging-tk
 
 ## Splash Screen
 sudo apt-get install fbi

@@ -3,6 +3,10 @@
 """
 Tractor Performance System (TPS) for the MR15
 Developed by Macdonald Campus ASABE Tractor Pull Team
+
+TODO:
+    - Add speedometer for wheel rpm
+    - Add gauge for fuel rate
 """
 
 # Modules
@@ -17,125 +21,84 @@ MONITOR_DEV = '/dev/ttyACM0'
 CONTROLLER_DEV = '/dev/ttyACM1'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
-MONITOR_PARAMS = ['kill','lock','ignition','fuel','wheel']
+MONITOR_PARAMS = ['lock','ignition','fuel','wheel','rfid']
 
 # Commands
-KILL = 0
-STANDBY = 1
-IGNITION = 2
-BALLAST_UP = 3
-BALLAST_DOWN = 4
-STEERING_UP = 5
-STEERING_DOWN = 6
-WAIT = 255
+KILL = '0'
+STANDBY = '1'
+IGNITION = '2'
+BALLAST_UP = '3'
+BALLAST_DOWN = '4'
+STEERING_UP = '5'
+STEERING_DOWN = '6'
+WAIT = '7'
 
 # Control system class
 class Tractor:
 
     def __init__(self):
+        print('[Enabling Monitor]')
         try:
             self.monitor = serial.Serial(MONITOR_DEV,MONITOR_BAUD)
         except Exception as error:
-            print str(error)
+            print('--> ' + str(error))
+        print('[Enabling Controller]')
         try:
             self.controller = serial.Serial(CONTROLLER_DEV,CONTROLLER_BAUD)
         except Exception as error:
-            print str(error)
-            
-        ## States
-        self.state = 'off'
-        self.steering_speed = 0
-        self.ballast_speed = 0
+            print('--> ' + str(error))
 
     def get_current(self):
+        print('[Getting Current Sensors]')
         try:
             json = self.monitor.readline()
-            state = ast.literal_eval(json)
+            current = ast.literal_eval(json)
+            # Test to make sure the object is complete
             for key in MONITOR_PARAMS:
                 try:
                     state[key]
                 except Exception:
                     return None
-            return state
+            return current
         except Exception as error:
-            print str(error)
-    
-    def handle_fuel(self, current):
+            print('--> ' + str(error))
+            
+    def best(self, current, action=WAIT):
+        print('[Deciding Best Action]')
         if current:
-            return current['fuel']
-        else:
-            return 0
-        
-    def handle_wheel(self, current):
-        if current: 
-            return current['wheel']
-        else:
-            return 0
-        
-    def handle_ballast(self, current):
-        if current:
+            rfid = current['rfid']
+            lock = current['lock']
             ballast = current['ballast']
-            if ballast == 1:
-                action = BALLAST_UP
-                self.ballast_speed += 1
-            elif ballast == 0:
-                action = WAIT
-            elif ballast == -1:
-                action = BALLAST_DOWN
-                self.ballast_speed -= 1
-        else:
-            action = WAIT
-        return action
-        
-    def handle_steering(self, current):
-        if current:
+            ignition = current['rfid']
             steering = current['steering']
-            if steering == 1:
+            if (rfid == 1):
+                action = STANDBY
+            elif (ignition == 1) and (lock == 0):
+                action = IGNITION
+            elif (steering == 1): 
                 action = STEERING_UP
-                self.steering_speed += 1
-            elif steering == 0:
-                action = WAIT
-            elif steering == -1:
+            elif (steering == -1): 
                 action = STEERING_DOWN
-                self.steering_speed -= 1
-        else:
-            action = WAIT
-        return action
-    
-    def handle_engine(self, current):
-        if current:     
-            if self.state == 'run':
-                if current['kill'] == 1:
-                    self.state = 'off'
-                    action = KILL
-                else:
-                    action = WAIT
-            elif self.state == 'standby':
-                if current['ignition'] == 1:
-                    self.state = 'run'
-                    action = IGNITION
-                else:
-                    action = WAIT
-            elif self.state == 'off':
-                if current['rfid'] == 1:
-                    self.state = 'standy'
-                    action = STANDBY
-                else:
-                    action = WAIT
-        else:
-            action = WAIT
+            elif (ballast == 1):
+                action == BALLAST_UP
+            elif (ballast == -1):
+                action == BALLAST_DOWN
+        print('--> ' + action)
         return action
 
     def send_action(self, action):
+        print('[Sending Action]')
         try:
             response = self.controller.write(action)
+            print('--> ' + action)
             return response
         except Exception as error:
-            print str(error) 
+            print('--> ' + str(error))
 
 # Display system 
 class Display(object):
     def __init__(self, master, **kwargs):
+        print('[Initializing Display]')
         pad = 3
         self.master = master
         self._geom='640x480+0+0'
@@ -146,57 +109,14 @@ class Display(object):
         self.set_layout() # call the set the UI layout fnc
     
     def set_layout(self):
+        print('[Setting Layout]')
 #        self.master.overrideredirect(True) # make fullscreen
         self.master.focus_set()
         self.master.state("normal")
         
-        ## Error Label
-        self.error_var = tk.StringVar()
-        self.error_var.set('None')
-        error_label = tk.Label(
-            self.master,
-            textvariable=self.error_var,
-            font=("Helvetica", 24)
-        )
-        error_label.pack()
-        error_label.place(x=20, y=20)
-        
-        ## Monitor Label
-        self.monitor_var = tk.StringVar()
-        self.monitor_var.set('None')
-        monitor_label = tk.Label(
-            self.master,
-            textvariable=self.monitor_var,
-            font=("Helvetica", 24)
-        )
-        monitor_label.pack()
-        monitor_label.place(x=200, y=60)
-        
-        ## Controller Label
-        self.control_var = tk.StringVar()
-        self.control_var.set('None')
-        control_label = tk.Label(
-            self.master,
-            textvariable=self.control_var,
-            font=("Helvetica", 24)
-        )
-        control_label.pack()
-        control_label.place(x=200, y=100)
-
-        ## State Label
-        self.state_var = tk.StringVar()
-        self.state_var.set('None')
-        state_label = tk.Label(
-            self.master,
-            textvariable=self.state_var,
-            font=("Helvetica", 24)
-        )
-        state_label.pack()
-        state_label.place(x=20, y=100)
-        
         ## Fuel Label
         self.fuel_var = tk.StringVar()
-        self.fuel_var.set('None')
+        self.fuel_var.set('Fuel Rate: ?')
         fuel_label = tk.Label(
             self.master,
             textvariable=self.fuel_var,
@@ -207,7 +127,7 @@ class Display(object):
         
         ## Wheel Label
         self.wheel_var = tk.StringVar()
-        self.wheel_var.set('None')
+        self.wheel_var.set('Wheel Rate: ?')
         wheel_label = tk.Label(
             self.master,
             textvariable=self.wheel_var,
@@ -216,61 +136,62 @@ class Display(object):
         wheel_label.pack()
         wheel_label.place(x=20, y=180)
         
-        ## Ballast Label
-        self.ballast_var = tk.StringVar()
-        self.ballast_var.set('None')
-        ballast_label = tk.Label(
+        ## Frequency Label
+        self.freq_var = tk.StringVar()
+        self.freq_var.set('Update Rate: ?')
+        freq_label = tk.Label(
             self.master,
-            textvariable=self.ballast_var,
+            textvariable=self.freq_var,
             font=("Helvetica", 24)
         )
-        ballast_label.pack()
-        ballast_label.place(x=20, y=220)
+        freq_label.pack()
+        freq_label.place(x=20, y=220)
         
-        ## Steering Label
-        self.steering_var = tk.StringVar()
-        self.steering_var.set('None')
-        steering_label = tk.Label(
+        ## Brakes Label
+        self.brakes_var = tk.StringVar()
+        self.brakes_var.set('Brakes: ?')
+        brakes_label = tk.Label(
             self.master,
-            textvariable=self.steering_var,
+            textvariable=self.brakes_var,
             font=("Helvetica", 24)
         )
-        steering_label.pack()
-        steering_label.place(x=20, y=260)
+        brakes_label.pack()
+        brakes_label.place(x=20, y=260)
+        
+        ## Guard Label
+        self.guard_var = tk.StringVar()
+        self.guard_var.set('CVT Guard: ?')
+        guard_label = tk.Label(
+            self.master,
+            textvariable=self.guard_var,
+            font=("Helvetica", 24)
+        )
+        guard_label.pack()
+        guard_label.place(x=20, y=300)
 
-    def update(self, state='', control='', monitor='', error='', fuel='', wheel='', steering='', ballast=''):
-        self.error_var.set('Errors: ' + str(error))
-        self.monitor_var.set('Monitor Output: ' + str(monitor))
-        self.control_var.set('Controller Action: ' + str(control))
-        self.state_var.set('State: ' + str(state))
-        self.fuel_var.set('Fuel Rate: ' + str(fuel))
-        self.wheel_var.set('Wheel Rate: ' + str(wheel))
-        self.steering_var.set('Steering Speed: ' + str(steering))
-        self.ballast_var.set('Ballast Speed: ' + str(steering))
+    def update(self, current, freq):
+        print('[Updating Display]')
+        if current:
+            self.fuel_var.set('Fuel Rate: ' + str(current['fuel']))
+            self.wheel_var.set('Wheel Rate: ' + str(current['wheel']))
+            self.brakes_var.set('Brakes: ' + str(current['brakes']))
+            self.guard_var.set('CVT Guard: ' + str(current['guard']))
+        self.freq_var.set('Update Rate: ' + str(freq))
         self.master.update_idletasks()
 
 # Main Loop
 if __name__ == '__main__':
-    display = Display(tk.Tk())
+    root = tk.Tk()
+    root.config(background = "#FFFFFF") #sets background color to white
+    display = Display(root)
     tractor = Tractor()
     while True:
         try:
+            a = time.time()
             current = tractor.get_current()
-            engine_action = tractor.handle_engine(current)
-            ballast_action = tractor.handle_ballast(current)
-            steering_action = tractor.handle_steering(current)
-            fuel_rate = tractor.handle_fuel(current)
-            wheel_rate = tractor.handle_wheel(current)
-            response = tractor.send_action(engine_action)
-            display.update(
-                error=response,
-                monitor=current,
-                control=engine_action,
-                state=tractor.state,
-                fuel=fuel_rate,
-                wheel=wheel_rate,
-                ballast=tractor.ballast_speed,
-                steering=tractor.steering_speed
-            )
+            action = tractor.best(current)
+            response = tractor.send_action(action)
+            b = time.time()
+            display.update(current, (b-a))
         except KeyboardInterrupt:
             break
