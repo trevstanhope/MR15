@@ -20,13 +20,12 @@
      - Add Ballast limits
      - Add RFID
      - Add Ballast Control
-     - 
 */
 
 /* --- Libraries --- */
 #include <DualVNH5019MotorShield.h>
 
-/* --- Common Pins --- */
+/* --- Pins --- */
 #define STEERING_AMPS_PIN A0
 #define ACTUATOR_AMPS_PIN A1
 #define STEERING_POT_PIN A2
@@ -35,8 +34,8 @@
 #define HITCH_KILL_PIN A5
 #define RX_PIN 0
 #define TX_PIN 1
-#define MOTOR1_A_PIN 2
-#define BUTTON_KILL_PIN 3
+#define MOTOR1_A_PIN 2 // INTERRUPT 0
+#define BUTTON_KILL_PIN 3 // INTERRUPT 1
 #define MOTOR1_B_PIN 4
 #define STOP_RELAY_PIN 5
 #define MOTOR1_ENABLE_PIN 6
@@ -47,6 +46,10 @@
 #define REGULATOR_RELAY_PIN 11
 #define MOTOR2_ENABLE_PIN 12
 #define STARTER_RELAY_PIN 13
+#define BALLAST_PIN 18 // INTERRUPT 5
+#define STEERING_PIN 19 // INTERRUPT 4
+#define D20 20 // INTERRUPT 3
+#define D21 21 // INTERRUPT 2
 
 /* --- Mega Pins --- */
 #define RFID_PIN 22
@@ -59,22 +62,24 @@
 #define BALLAST_DOWN_PIN 29
 
 /* --- Interrupts --- */
-#define BALLAST_INT 1
-#define STEERING_INT 2
+#define BUTTON_INT 1
+#define BALLAST_INT 4
+#define STEERING_INT 5
 
-/* --- RFID Commans --- */
+/* --- RFID Commands --- */
 #define READ 0x02
 
 /* --- Functions --- */
-boolean kill(void);
-boolean standby(void);
-boolean ignition(void);
-boolean steering(void);
-boolean ballast(void);
+void kill(void);
+void standby(void);
+void ignition(void);
+void steering(void);
+void ballast(void);
 void count_ballast(void);
 void count_steering(void);
+boolean check_rfid(void);
 
-/* --- Time Constants --- */
+/* --- Constants --- */
 const int USB_BAUD = 9600;
 const int RFID_BAUD = 9600;
 const int SERIAL_TIMEOUT = 100;
@@ -82,155 +87,111 @@ const int IGNITION_WAIT = 200;
 const int BALLAST_WAIT = 200;
 const int STEERING_WAIT = 200;
 const int KILL_WAIT = 500;
-const int CHECK_WAIT = 100;
+const int CHECK_WAIT = 10;
 const int STANDBY_WAIT = 20;
 const int MOTORS_WAIT = 20;
-
-/* --- Speed Ranges --- */
+const int SIZE = 256;
 const int STEERING_MIN = 0;
 const int STEERING_MAX = 100;
 const int BALLAST_MIN = 0;
 const int BALLAST_MAX = 100;
 
-/* --- Char Commands --- */
-const char KILL = 'A';
-const char STANDBY = 'B';
-const char IGNITION = 'C';
-const char STEERING_UP = 'D';
-const char STEERING_DOWN = 'E';
-const char BALLAST_UP = 'F';
-const char BALLAST_DOWN = 'G';
-const char NONE = 'H';
-
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
+int STATE = 0;
 
-/* --- Volatile Bools --- */
-volatile boolean killed = false;
-volatile boolean locked = false;
-volatile boolean limited = false;
-volatile boolean kill_seat = false;
-volatile boolean kill_hitch = false;
-volatile boolean kill_button = false;
-volatile boolean limit_near = false;
-volatile boolean limit_far = false;
-volatile boolean lock_brakes = false;
-volatile boolean lock_guard = false;
-volatile boolean push_ignition = false;
-volatile boolean rfid = false;
-volatile boolean ballast_down = false;
-volatile boolean ballast_up = false;
-volatile boolean steering_down = false;
-volatile boolean steering_up = false;
-
-/* --- Volatile Ints --- */
+/* --- Volatiles --- */
+volatile boolean SEAT = false;
+volatile boolean HITCH = false;
+volatile boolean BUTTON = false;
+volatile boolean NEAR = false;
+volatile boolean FAR = false;
+volatile boolean BRAKES = false;
+volatile boolean GUARD = false;
+volatile boolean IGNITION = false;
+volatile boolean RFID = false;
 volatile int STEERING_POSITION = 0;
 volatile int ACTUATOR_POSITION = 0;
 volatile int STEERING_SPEED = 50;
 volatile int BALLAST_SPEED = 50;
 
 /* --- Character Buffer --- */
-char COMMAND;
+char BUFFER[SIZE];
 
 /* --- Setup --- */
 void setup() {
-  Serial1.begin(USB_BAUD);
+  Serial.begin(USB_BAUD);
   Serial2.begin(RFID_BAUD);
-  Serial1.setTimeout(SERIAL_TIMEOUT);
+  Serial.setTimeout(SERIAL_TIMEOUT);
   pinMode(BUTTON_KILL_PIN, INPUT);
   pinMode(SEAT_KILL_PIN, INPUT);
   pinMode(HITCH_KILL_PIN,INPUT);
-  digitalWrite(BUTTON_KILL_PIN, HIGH);
-  digitalWrite(SEAT_KILL_PIN, HIGH);
-  digitalWrite(HITCH_KILL_PIN, HIGH);
-  
-  /* --- Interrupts --- */
+  pinMode(NEAR_LIMIT_PIN, INPUT);
+  pinMode(FAR_LIMIT_PIN, INPUT);
+  pinMode(BRAKES_PIN, INPUT);
+  pinMode(GUARD_PIN, INPUT);
+  digitalWrite(BUTTON_KILL_PIN, LOW);
+  digitalWrite(SEAT_KILL_PIN, LOW);
+  digitalWrite(HITCH_KILL_PIN, LOW);
+  digitalWrite(NEAR_LIMIT_PIN, LOW);
+  digitalWrite(FAR_LIMIT_PIN, LOW);
+  digitalWrite(BRAKES_PIN, LOW);
+  digitalWrite(GUARD_PIN, LOW);
   attachInterrupt(BALLAST_INT, count_ballast, CHANGE);
   attachInterrupt(STEERING_INT, count_steering, CHANGE);
 }
 
 /* --- Loop --- */
 void loop() {
-  
-  // Check kill and limit and lock twice
-  // Then try to get command, if serial is not available default to secondary actions
-  kill_seat = digitalRead(SEAT_KILL_PIN);
-  kill_hitch = digitalRead(HITCH_KILL_PIN);
-  kill_button = digitalRead(BUTTON_KILL_PIN);
-  limit_near = digitalRead(NEAR_LIMIT_PIN);
-  limit_far = digitalRead(FAR_LIMIT_PIN);
-  lock_brakes = digitalRead(BRAKES_PIN);
-  lock_guard = digitalRead(GUARD_PIN);
-  push_ignition = digitalRead(IGNITION_PIN);
-  rfid = check_rfid;
-  delay(CHECK_WAIT);
-  if (kill_seat && digitalRead(SEAT_KILL_PIN)) {
-    kill();
+  SEAT = check_seat();
+  HITCH = check_hitch();
+  BUTTON = check_button();
+  BRAKES = check_brakes();
+  GUARD = check_guard();
+  NEAR = check_near();
+  FAR = check_far();
+  IGNITION = check_ignition();
+  RFID = check_rfid();
+  if (STATE == 0) {
+    if (RFID) {
+      ready();
+      STATE = 1;
+    }
   }
-  else if (kill_hitch && digitalRead(HITCH_KILL_PIN)) {
-    kill();
-    steering();
+  else if (STATE == 1) {
+    if (SEAT || HITCH || BUTTON) {
+      kill();
+      STATE = 1;
+    }
+    else if (IGNITION && !BRAKES && !GUARD) {
+      ignition();
+      STATE = 2;
+    }
+    else {
+      steering();
+      ballast();
+    }
   }
-  else if (kill_button && digitalRead(BUTTON_KILL_PIN)) {
-    kill();
-  }
-  else if (rfid) {
-    ready();
-    steering();
-  }
-  else if (push_ignition && (lock_brakes && lock_guard)) {
-    ignition();
-  }
-  else if (limit_near && limit_far) {
-    steering();
-  }
-  else {
-    steering();
-    ballast();
-  }
-   
-  // Transmit Results
-  char json[128];
-  char command = Serial1.read();
-  switch (command) {
-    case KILL:
-      kill(); break;
-    case STANDBY:
-      ready(); break;
-    case IGNITION:
-      ignition(); break;
-    case BALLAST_UP:
-      BALLAST_SPEED++; break;
-    case BALLAST_DOWN:
-      BALLAST_SPEED--; break;
-    case STEERING_UP:
-      STEERING_SPEED++; break;
-    case STEERING_DOWN:
-      STEERING_SPEED--; break;
-    default:
-      break;
-  }
-  delay(20);
-  sprintf(json, "{'ballast':%d, 'steering':%d,'killed':%d,'locked':%d, 'limit':%d}", BALLAST_SPEED, STEERING_SPEED, killed, locked, limited);
-  Serial1.println(json);
-}
-
-/*
-  STATE FUNCTIONS
-*/
-
-/* --- Check RFID --- */
-boolean check_rfid(void) {
-  if (Serial2.available()) {
-    return true;
+  else if (STATE == 2) {
+    if (SEAT || HITCH || BUTTON) {
+      kill();
+      STATE = 1;
+    }
+    else {
+      steering();
+      ballast();
+    }
   }
   else {
-    return false;
+    STATE = 0;
   }
+  sprintf(BUFFER, "{'ballast':%d,'steering':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'near':%d,'far':%d,'ignition':%d,'state':%d}", BALLAST_SPEED,STEERING_SPEED,SEAT,BRAKES,GUARD,HITCH,BUTTON,NEAR,FAR,IGNITION,STATE);
+  Serial.println(BUFFER);
 }
 
-/* --- Kill --- */
-boolean kill(void) {
+/* --- State Functions --- */
+// Kill() --> Kills vehicle then returns true 
+void kill(void) {
   MOTORS.setM1Speed(0);
   MOTORS.setM2Speed(0);
   delay(MOTORS_WAIT);
@@ -238,11 +199,10 @@ boolean kill(void) {
   digitalWrite(STARTER_RELAY_PIN, LOW);
   digitalWrite(REGULATOR_RELAY_PIN, LOW);
   delay(KILL_WAIT);
-  return true;
 }
 
-/* --- Ready --- */
-boolean ready(void) {
+// Ready() --> Ready vehicle
+void ready(void) {
   MOTORS.setM1Speed(0);
   MOTORS.setM2Speed(0);
   delay(MOTORS_WAIT);
@@ -250,11 +210,10 @@ boolean ready(void) {
   digitalWrite(REGULATOR_RELAY_PIN, LOW);
   digitalWrite(STARTER_RELAY_PIN, LOW);
   delay(STANDBY_WAIT);
-  return true;
 }
 
-/* --- Ignition --- */
-boolean ignition(void) {
+// Ignition() --> Ignition
+void ignition(void) {
   MOTORS.setM1Speed(0);
   MOTORS.setM2Speed(0);
   delay(MOTORS_WAIT);
@@ -266,12 +225,10 @@ boolean ignition(void) {
   digitalWrite(REGULATOR_RELAY_PIN, LOW);
   digitalWrite(STARTER_RELAY_PIN, LOW);
   delay(STANDBY_WAIT);
-  return true;
 }
 
-/* --- Steering --- */
-// The right to steer
-boolean steering(void) {
+// Steering() --> Moves actuator
+void steering(void) {
   STEERING_POSITION = analogRead(STEERING_POT_PIN);
   ACTUATOR_POSITION = analogRead(ACTUATOR_POT_PIN);
   if (ACTUATOR_POSITION > STEERING_POSITION) {
@@ -283,27 +240,178 @@ boolean steering(void) {
   else {
     MOTORS.setM1Speed(0);
   }
-  return true;
 }
 
-/* --- Ballast Speed --- */
-boolean ballast(void) {
-  MOTORS.setM2Speed(BALLAST_SPEED);
-  delay(BALLAST_WAIT);
-  MOTORS.setM2Speed(0);
-  return true;
+// Ballast() --> Moves ballast
+void ballast(void) {
+  if (BALLAST_SPEED > 0) {
+    if (check_far()) {
+      MOTORS.setM2Speed(0);
+    }
+    else {
+      MOTORS.setM2Speed(BALLAST_SPEED);
+      delay(BALLAST_WAIT);
+      MOTORS.setM2Speed(0);
+    }
+  }
+  else if (BALLAST_SPEED < 0) {
+    if (check_near()) {
+      MOTORS.setM2Speed(0);
+    }
+    else {
+      MOTORS.setM2Speed(BALLAST_SPEED);
+      delay(BALLAST_WAIT);
+      MOTORS.setM2Speed(0);
+    }
+  }
+  else {
+    MOTORS.setM2Speed(0);
+  }
 }
-/*
-  CHECKING FUNCTION
-*/
 
-/*
-  INTERRUPT FUNCTIONS
-*/
+/* --- CHECKING FUNCTION --- */
+// Check RFID() --> Returns true if RFID valid
+boolean check_rfid(void) {
+  if (Serial2.available()) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Ignition() --> Returns true if ignition pressed
+boolean check_ignition(void) {
+  if (digitalRead(IGNITION_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(IGNITION_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Seat() --> Returns true if seat kill engaged
+boolean check_seat(void) {
+  if (digitalRead(SEAT_KILL_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(SEAT_KILL_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Hitch() --> Returns true if seat kill engaged
+boolean check_hitch(void) {
+  if (digitalRead(HITCH_KILL_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(HITCH_KILL_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Button() --> Returns true if seat kill engaged
+boolean check_button(void) {
+  if (digitalRead(BUTTON_KILL_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(BUTTON_KILL_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Brakes() --> Returns true if brakes engaged
+boolean check_brakes(void) {
+  if (digitalRead(BRAKES_PIN) || digitalRead(GUARD_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(BRAKES_PIN) || digitalRead(GUARD_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Guard() --> Returns true if guard open
+boolean check_guard(void) {
+  if (digitalRead(GUARD_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(GUARD_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Near() --> Returns true if limits engaged
+boolean check_near(void) {
+  if (digitalRead(NEAR_LIMIT_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(NEAR_LIMIT_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+// Check Far() --> Returns true if limits engaged
+boolean check_far(void) {
+  if (digitalRead(FAR_LIMIT_PIN)) {
+    delay(CHECK_WAIT);
+    if (digitalRead(FAR_LIMIT_PIN)) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
+/* --- INTERRUPT FUNCTIONS --- */
+// Count Ballast() --> 
 void count_ballast(void) {
-  ballast_down = digitalRead(BALLAST_DOWN_PIN);
-  ballast_up = digitalRead(BALLAST_DOWN_PIN);
-  if (ballast_down) {
+  if (digitalRead(BALLAST_DOWN_PIN)) {
     if (BALLAST_SPEED < BALLAST_MIN) {
       BALLAST_SPEED = BALLAST_MIN;
     }
@@ -311,7 +419,7 @@ void count_ballast(void) {
       BALLAST_SPEED--;
     }
   }
-  else if (ballast_up) {
+  else if (digitalRead(BALLAST_DOWN_PIN)) {
     if (BALLAST_SPEED > BALLAST_MAX) {
       BALLAST_SPEED = BALLAST_MAX;
     }
@@ -321,10 +429,9 @@ void count_ballast(void) {
   }
 }
 
+// Count Steering() -->
 void count_steering(void) {
-  steering_down = digitalRead(BALLAST_DOWN_PIN);
-  steering_up = digitalRead(BALLAST_DOWN_PIN);
-  if (steering_down) {
+  if (digitalRead(BALLAST_DOWN_PIN)) {
     if (STEERING_SPEED < STEERING_MIN) {
       STEERING_SPEED = STEERING_MIN;
     }
@@ -332,7 +439,7 @@ void count_steering(void) {
       STEERING_SPEED--;
     }
   }
-  else if (steering_up) {
+  else if (digitalRead(BALLAST_DOWN_PIN)) {
     if (STEERING_SPEED > STEERING_MAX) {
       STEERING_SPEED = STEERING_MAX;
     }
@@ -341,4 +448,3 @@ void count_steering(void) {
     }
   }
 }
-  

@@ -1,4 +1,63 @@
 # Mutrac MR15
+## Overview
+The MR15 features a dynamic new electronic 
+
+### Electronic Control Unit (ECU)
+The ECU is a dedicated microcontroller for managing basic vehicle functionality.
+Responsibilities of the ECU include managing several key sub-systems, specifically 
+the Power Steering Module (PSM), Electronic Ballast Module (EBM),
+Electronic Engine Module (EEM), and Fail-Safe Module (FSM).
+
+#### Power Steering Module (PSM)
+Handles the electronic steering.
+
+Features:
+* 20 Amp Linear Actuator
+* Position feedback potentiometer
+* Steering sensitivity control buttons
+
+#### Electronic Ballast Module (EBM)
+Controls the ballast system.
+
+Features:
+* 15 Amp motor controller
+* Limit switches
+* Ballast position control buttons
+
+#### Electronic Engine Module (EEM)
+Handles the engine state.
+
+Features:
+* RFID key authentication
+* 3-channel relay module
+
+#### Fail-Safe Module (FSM)
+Integrated system which handles all vehicle safety features.
+ 
+Features:
+* Seat killswitch
+* Hitch killswitch
+* Button killswitch
+* CVT Guard Photosensor engine lock
+* Dual brakes engine lock
+
+### Electronic Monitoring Unit (EMU)
+The EMU is a dedicated microcontroller which monitors the vehicle's embedded sensors.
+
+Sensors:
+* DHT22 Temperature/Humidity Sensor
+* Fuel Flow Sensor
+* Wheel Speed Induction Sensor
+* DS18B20 Engine Temperature Sensor
+
+### Vehicle Performance System (VPS)
+The VPS is a Linux nano-computer that functions as the both the Human-Machine Interface (HMI)
+and the Remote Diagnostic System (RDS). Both the ECU and the EMU are directly interfaced
+with the VPS via UART serial interface.
+
+Features:
+* 802.11n Wifi Connectivity
+* 7" TFT LCD and Real-time Graphical Disp
 
 ## Installation
 Just run the following from your $HOME directory:
