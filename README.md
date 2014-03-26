@@ -1,32 +1,32 @@
 # Mutrac MR15
 ## Overview
-The MR15 features a dynamic new electronic system based on three electronic components:
+The MR15 features a dynamic new electronic system based on three independent components:
 the Electronic Control Unit (ECU), Electronic Monitoring Unit (EMU) and
 Vehicle Performace System (VPS).
 
 ### Electronic Control Unit (ECU)
 The ECU is a dedicated ATmega1280 microcontroller for managing basic vehicle functionality.
-Responsibilities of the ECU include managing several key sub-systems, specifically 
-the Power Steering Module (PSM), Electronic Ballast Module (EBM),
-Electronic Engine Module (EEM), and Fail-Safe Module (FSM).
+It's responsibilities include managing several key sub-systems, specifically 
+the Power Steering System (PSS), Electronic Ballast Ssystem (EBS),
+Electronic Engine System (EES), and Fail-Safe System (FSS).
 
-#### Power Steering Module (PSM)
+#### Power Steering Module (PSS)
 Handles the electronic steering.
 
 Features:
-* 20 Amp Linear Actuator
+* 20 Amp Linear Actuator Controller
 * Position feedback potentiometer
 * Steering sensitivity control buttons
 
-#### Electronic Ballast Module (EBM)
+#### Electronic Ballast Module (EBS)
 Controls the electronic ballast for in-pull weight management.
 
 Features:
-* 15 Amp motor controller
+* 15 Amp Motor Controller
 * Limit switches
 * Ballast position control buttons
 
-#### Electronic Engine Module (EEM)
+#### Electronic Engine Module (EES)
 Handles the engine state.
 
 Features:
@@ -34,15 +34,17 @@ Features:
 * Push-to-Start Ignition
 * 3-channel relay module
 
-#### Fail-Safe Module (FSM)
-Integrated system which handles all vehicle safety features.
+#### Fail-Safe Module (FSS)
+Integrated system which handles all vehicle safety features. Real-time detection
+of any safety triggers and error checking allow the vehicle to reliably handle
+emergency situations.
  
 Features:
-* Seat killswitch
-* Hitch killswitch
-* Button killswitch
-* CVT Guard Photosensor engine lock
-* Dual brakes engine lock
+* Seat Killswitch
+* Hitch Killswitch
+* Button Killswitch
+* CVT Guard Photosensor Engine Lock
+* Dual brakes Engine Lock
 
 ### Electronic Monitoring Unit (EMU)
 The EMU is a secondary ATMEL328 microcontroller which monitors the vehicle's embedded sensors.
@@ -54,9 +56,9 @@ Sensors:
 * DS18B20 Engine Temperature Sensor
 
 ### Vehicle Performance System (VPS)
-The VPS is a Linux nano-computer that functions as the both the Human-Machine Interface (HMI)
-and the Remote Diagnostic System (RDS). Both the ECU and the EMU are directly interfaced
-with the VPS via UART serial interface.
+The VPS is a Linux nano-computer running on 700 MHz ARM processor which functions
+as the both the Human-Machine Interface (HMI) and the Remote Diagnostic System (RDS).
+Both the ECU and the EMU are directly interfaced with the VPS via UART serial interfaces.
 
 Features:
 * 802.11n Wifi Connectivity
@@ -72,8 +74,20 @@ Just run the following from your $HOME directory:
    
 ## Configuration
 ### Configuring Arduinos (IMPORTANT)
-The Controller and Monitor subsystems must be loaded to their respective PLC.
-Please check the README.md
+The ECU and EMU subsystems must be upload to their respective Programmable Logic Controller (PLC).
+
+To do so, connect the PLC and navigate to the proper folder (monitor/ or controller/).
+Next, clean the directory of any previous build information:
+
+    make clean
+    
+Then, compile the source code:
+
+    make
+    
+Lastly, upload the compiled to the PLC:
+
+    make upload
 
 ### Configuring Boot to Fullscreen (IMPORTANT)
 Edit the LDM config:
