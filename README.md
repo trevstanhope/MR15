@@ -1,9 +1,11 @@
 # Mutrac MR15
 ## Overview
-The MR15 features a new electronic system which 
+The MR15 features a dynamic new electronic system based on three electronic components:
+the Electronic Control Unit (ECU), Electronic Monitoring Unit (EMU) and
+Vehicle Performace System (VPS).
 
 ### Electronic Control Unit (ECU)
-The ECU is a dedicated ATMEL328 microcontroller for managing basic vehicle functionality.
+The ECU is a dedicated ATmega1280 microcontroller for managing basic vehicle functionality.
 Responsibilities of the ECU include managing several key sub-systems, specifically 
 the Power Steering Module (PSM), Electronic Ballast Module (EBM),
 Electronic Engine Module (EEM), and Fail-Safe Module (FSM).
@@ -17,7 +19,7 @@ Features:
 * Steering sensitivity control buttons
 
 #### Electronic Ballast Module (EBM)
-Controls the ballast system.
+Controls the electronic ballast for in-pull weight management.
 
 Features:
 * 15 Amp motor controller
@@ -29,6 +31,7 @@ Handles the engine state.
 
 Features:
 * RFID key authentication
+* Push-to-Start Ignition
 * 3-channel relay module
 
 #### Fail-Safe Module (FSM)
