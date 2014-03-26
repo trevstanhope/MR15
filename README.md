@@ -1,9 +1,9 @@
 # Mutrac MR15
 ## Overview
-The MR15 features a dynamic new electronic 
+The MR15 features a new electronic system which 
 
 ### Electronic Control Unit (ECU)
-The ECU is a dedicated microcontroller for managing basic vehicle functionality.
+The ECU is a dedicated ATMEL328 microcontroller for managing basic vehicle functionality.
 Responsibilities of the ECU include managing several key sub-systems, specifically 
 the Power Steering Module (PSM), Electronic Ballast Module (EBM),
 Electronic Engine Module (EEM), and Fail-Safe Module (FSM).
@@ -42,11 +42,11 @@ Features:
 * Dual brakes engine lock
 
 ### Electronic Monitoring Unit (EMU)
-The EMU is a dedicated microcontroller which monitors the vehicle's embedded sensors.
+The EMU is a secondary ATMEL328 microcontroller which monitors the vehicle's embedded sensors.
 
 Sensors:
-* DHT22 Temperature/Humidity Sensor
-* Fuel Flow Sensor
+* Internal Computer Conditions with a DHT22 Temperature/Humidity Sensor
+* Fuel Flow Rate Sensor
 * Wheel Speed Induction Sensor
 * DS18B20 Engine Temperature Sensor
 
