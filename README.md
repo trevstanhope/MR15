@@ -1,4 +1,4 @@
-# Mutrac MR15
+# MR15 Electronics System
 ## Overview
 The MR15 features a dynamic new electronic system based on three independent components:
 the Electronic Control Unit (ECU), Electronic Monitoring Unit (EMU) and
@@ -6,7 +6,7 @@ Vehicle Performace System (VPS).
 
 ### Electronic Control Unit (ECU)
 The ECU is a dedicated ATmega1280 microcontroller for managing basic vehicle functionality.
-It's responsibilities include managing several key sub-systems, specifically 
+Its responsibilities include managing several key sub-systems, specifically 
 the Power Steering System (PSS), Electronic Ballast Ssystem (EBS),
 Electronic Engine System (EES), and Fail-Safe System (FSS).
 
@@ -111,7 +111,7 @@ Comment everything and add the following lines:
     @xset s off
     @xset -dpms
     @xset s noblank
-    @python ~/MR15/examples/fullscreen_tkinter.py # will change later to MR15.py
+    @python ~/MR15/MR15.py
     
 ### System Speed Tweak (Optional)
 Open the system control file:
