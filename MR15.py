@@ -5,8 +5,9 @@ Vehicle Performance System (VPS) for the MR15
 Developed by Macdonald Campus ASABE Tractor Pull Team
 
 TODO:
-    - Add speedometer for wheel rpm
-    - Add gauge for fuel rate
+    - Improve GUI
+        - Add speedometer for wheel rpm
+        - Add gauge for fuel rate
 """
 
 # Modules
@@ -17,8 +18,8 @@ import Tkinter as tk
 import time
 
 # Global
-MONITOR_DEV = '/dev/ttyACM0' # '/dev/ttyS0'
-CONTROLLER_DEV = '/dev/ttyACM1' # '/dev/ttyACM0'
+MONITOR_DEV = '/dev/ttyACM1' # '/dev/ttyS0'
+CONTROLLER_DEV = '/dev/ttyACM0' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
 MONITOR_PARAMS = ['fuel','wheel', 'temp','humidity']
@@ -46,10 +47,12 @@ class Tractor:
                 try:
                     response[key]
                 except Exception:
-                    return None
+                    response[key] = 0
+            print('\t' + str(response))
             return response
         except Exception as error:
             print('--> ' + str(error))
+            
     def check_controller(self):
         print('[Getting ECU State]')
         try:
@@ -59,7 +62,8 @@ class Tractor:
                 try:
                     response[key]
                 except Exception:
-                    return None
+                    response[key] = 0
+            print('\t' + str(response))
             return response
         except Exception as error:
             print('--> ' + str(error))
@@ -213,7 +217,8 @@ class Display(object):
         )
         ballast_label.pack()
         ballast_label.place(x=20, y=480)
-    def update(self, monitor,control,freq):
+        
+    def update(self, monitor, control, freq):
         print('[Updating Display]')
         if (monitor):
             self.fuel_var.set('Fuel Rate (L/H): ' + str(monitor['fuel']))

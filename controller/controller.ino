@@ -26,42 +26,51 @@
 #define ACTUATOR_AMPS_PIN A1
 #define STEERING_POT_PIN A2
 #define ACTUATOR_POT_PIN A3
-#define SEAT_KILL_PIN A4
-#define HITCH_KILL_PIN A5
+//#define SEAT_KILL_PIN A4
+//#define HITCH_KILL_PIN A5
 #define RX_PIN 0
 #define TX_PIN 1
 #define MOTOR1_A_PIN 2 // INTERRUPT 0
-#define BUTTON_KILL_PIN 3 // INTERRUPT 1
+// #define BUTTON_KILL_PIN 3 // INTERRUPT 1
 #define MOTOR1_B_PIN 4
-#define STOP_RELAY_PIN 5
+//#define STOP_RELAY_PIN 5
 #define MOTOR1_ENABLE_PIN 6
 #define MOTOR2_A_PIN 7
 #define MOTOR2_B_PIN 8
 #define MOTOR1_SPEED_PIN 9
 #define MOTOR2_SPEED_PIN 10
-#define REGULATOR_RELAY_PIN 11
+//#define REGULATOR_RELAY_PIN 11
 #define MOTOR2_ENABLE_PIN 12
-#define STARTER_RELAY_PIN 13
-#define BALLAST_PIN 18 // INTERRUPT 5
-#define STEERING_PIN 19 // INTERRUPT 4
-#define D20 20 // INTERRUPT 3
-#define D21 21 // INTERRUPT 2
+//#define STARTER_RELAY_PIN 13
 
-/* --- Mega Pins --- */
-#define RFID_PIN 22
-#define NEAR_LIMIT_PIN 23
-#define FAR_LIMIT_PIN 24
-#define BRAKES_PIN 25
-#define GUARD_PIN 26
-#define IGNITION_PIN 27
-#define BALLAST_UP_PIN 28
-#define BALLAST_DOWN_PIN 29
-#define STEERING_UP_PIN 30
-#define STEERING_DOWN_PIN 31
+/* --- Serial/Interrupt Pins --- */
+#define RFID_TX_PIN 14
+#define RFID_RX_PIN 15
+#define BALLAST_UP_PIN 18 // INTERRUPT 5
+#define BALLAST_DOWN_PIN 19 // INTERRUPT 4
+#define STEERING_UP_PIN 20 // INTERRUPT 3
+#define STEERING_DOWN_PIN 21 // INTERRUPT 2
+
+/* --- Switch Pins --- */
+#define NEAR_LIMIT_PIN 22
+#define FAR_LIMIT_PIN 23
+#define BRAKES_PIN 24
+#define GUARD_PIN 25
+#define IGNITION_PIN 26
+#define SEAT_KILL_PIN 27
+#define HITCH_KILL_PIN 28
+#define BUTTON_KILL_PIN 29
+
+/* --- Relay Pins --- */
+#define STOP_RELAY_PIN 30
+#define STARTER_RELAY_PIN 31
+#define REGULATOR_RELAY_PIN 32
 
 /* --- Interrupts --- */
-#define BALLAST_INT 5 // PIN 18
-#define STEERING_INT 4 // Pin 19
+#define BALLAST_UP_INT 5 // PIN 18
+#define BALLAST_DOWN_INT 4 // PIN 19
+#define STEERING_UP_INT 3 // PIN 20
+#define STEERING_DOWN_INT 2 // PIN 21
 
 /* --- RFID Commands --- */
 #define READ 0x02
@@ -72,8 +81,10 @@ void standby(void);
 void ignition(void);
 void steering(void);
 void ballast(void);
-void count_ballast(void);
-void count_steering(void);
+void count_ballast_up(void);
+void count_steering_up(void);
+void count_ballast_down(void);
+void count_steering_down(void);
 boolean check_rfid(void);
 boolean check_near(void);
 boolean check_far(void);
@@ -93,7 +104,7 @@ const int KILL_WAIT = 500;
 const int CHECK_WAIT = 10;
 const int STANDBY_WAIT = 20;
 const int MOTORS_WAIT = 20;
-const int BUFFER_SIZE = 256;
+const int BUFFER_SIZE = 512;
 const int STEERING_MIN = 0;
 const int STEERING_NORMAL = 2;
 const int STEERING_MAX = 4;
@@ -101,10 +112,10 @@ const int STEERING_MULTIPLIER = 25;
 const int BALLAST_MIN = -2;
 const int BALLAST_MAX = 2;
 const int BALLAST_MULTIPLIER = 25;
+const int LIGHT_THRESHOLD = 50;
 
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
-int STATE = 0;
 
 /* --- Volatiles --- */
 volatile boolean SEAT = false;
@@ -120,6 +131,8 @@ volatile int STEERING_POSITION = 0;
 volatile int ACTUATOR_POSITION = 0;
 volatile int STEERING_SPEED = STEERING_NORMAL;
 volatile int BALLAST_SPEED = 0;
+volatile int STATE = 0;
+
 
 /* --- Character Buffer --- */
 char BUFFER[BUFFER_SIZE];
@@ -143,8 +156,10 @@ void setup() {
   digitalWrite(FAR_LIMIT_PIN, LOW);
   digitalWrite(BRAKES_PIN, LOW);
   digitalWrite(GUARD_PIN, LOW);
-  attachInterrupt(BALLAST_INT, count_ballast, CHANGE);
-  attachInterrupt(STEERING_INT, count_steering, CHANGE);
+  attachInterrupt(BALLAST_UP_INT, count_ballast_up, RISING);
+  attachInterrupt(BALLAST_DOWN_INT, count_steering_down, RISING);
+  attachInterrupt(STEERING_UP_INT, count_steering_up, RISING);
+  attachInterrupt(STEERING_DOWN_INT, count_steering_down, RISING);
 }
 
 /* --- Loop --- */
@@ -160,7 +175,7 @@ void loop() {
   RFID = check_rfid();
   if (STATE == 0) {
     if (RFID) {
-      ready();
+      standby();
       STATE = 1;
     }
   }
@@ -191,7 +206,10 @@ void loop() {
   else {
     STATE = 0;
   }
-  sprintf(BUFFER, "{'bal_spd':%d,'str_spd':%d,'str_pos':%d,'act_pos':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'near':%d,'far':%d,'ignition':%d,'state':%d}", BALLAST_SPEED,STEERING_SPEED,STEERING_POSITION,ACTUATOR_POSITION,SEAT,BRAKES,GUARD,HITCH,BUTTON,NEAR,FAR,IGNITION,STATE);
+  sprintf(
+    BUFFER,
+    "{'bal_spd':%d,'str_spd':%d,'str_pos':%d,'act_pos':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'near':%d,'far':%d,'ignition':%d,'state':%d}",
+    BALLAST_SPEED,STEERING_SPEED,STEERING_POSITION,ACTUATOR_POSITION,SEAT,BRAKES,GUARD,HITCH,BUTTON,NEAR,FAR,IGNITION,STATE);
   Serial.println(BUFFER);
 }
 
@@ -207,8 +225,8 @@ void kill(void) {
   delay(KILL_WAIT);
 }
 
-// Ready() --> Ready vehicle
-void ready(void) {
+// standby() --> standby vehicle
+void standby(void) {
   MOTORS.setM1Speed(0);
   MOTORS.setM2Speed(0);
   delay(MOTORS_WAIT);
@@ -253,7 +271,7 @@ void steering(void) {
 
 // Ballast() --> Moves ballast
 void ballast(void) {
-  // If the ballast speed is positive, activates the ballast FORWARD if the far limit is not engaged
+  // If the ballast speed is positive, activates the ballast FORWARD (POSITIVE) if the far limit is not engaged
   if (BALLAST_SPEED > 0) {
     if (check_far()) {
       MOTORS.setM2Speed(0);
@@ -264,7 +282,7 @@ void ballast(void) {
       MOTORS.setM2Speed(0);
     }
   }
-  // If the ballast speed is NEGATIVE, activates the ballast BACKWARD if the near limit is not engaged
+  // If the ballast speed is NEGATIVE, activates the ballast BACKWARD (NEGATIVE) if the near limit is not engaged
   else if (BALLAST_SPEED < 0) {
     if (check_near()) {
       MOTORS.setM2Speed(0);
@@ -374,9 +392,9 @@ boolean check_brakes(void) {
 
 // Check Guard() --> Returns true if guard open
 boolean check_guard(void) {
-  if (digitalRead(GUARD_PIN)) {
+  if (digitalRead(GUARD_PIN) >= LIGHT_THRESHOLD) {
     delay(CHECK_WAIT);
-    if (digitalRead(GUARD_PIN)) {
+    if (digitalRead(GUARD_PIN) >= LIGHT_THRESHOLD) {
       return true;
     }
     else {
@@ -421,42 +439,42 @@ boolean check_far(void) {
 }
 
 /* --- Interrupt Function --- */
-// Count Ballast() --> Counts changes to ballast settings
-void count_ballast(void) {
-  if (digitalRead(BALLAST_DOWN_PIN)) {
-    if (BALLAST_SPEED < BALLAST_MIN) {
-      BALLAST_SPEED = BALLAST_MIN; // limit at min
-    }
-    else {
-      BALLAST_SPEED--;
-    }
+// Count Ballast Up() --> Increases the ballast speed
+void count_ballast_up(void) {
+  if (BALLAST_SPEED > BALLAST_MAX) {
+    BALLAST_SPEED = BALLAST_MAX; // limit at max
   }
-  else if (digitalRead(BALLAST_UP_PIN)) {
-    if (BALLAST_SPEED > BALLAST_MAX) {
-      BALLAST_SPEED = BALLAST_MAX; // limit at max
-    }
-    else {
-      BALLAST_SPEED++;
-    }
+  else {
+    BALLAST_SPEED++;
   }
 }
 
-// Count Steering() --> Counts changes to steering sensitivity
-void count_steering(void) {
-  if (digitalRead(STEERING_DOWN_PIN) == 1) {
-    if (STEERING_SPEED < STEERING_MIN) {
-      STEERING_SPEED = STEERING_MIN; // limit at min
-    }
-    else {
-      STEERING_SPEED--;
-    }
+// Count Ballast Down() --> Decreases the ballast speed
+void count_ballast_down(void) {
+  if (BALLAST_SPEED < BALLAST_MIN) {
+    BALLAST_SPEED = BALLAST_MIN; // limit at min
   }
-  else if (digitalRead(STEERING_UP_PIN) == 1) {
-    if (STEERING_SPEED > STEERING_MAX) {
-      STEERING_SPEED = STEERING_MAX; // limit at max
-    }
-    else {
-      STEERING_SPEED++;
-    }
+  else {
+    BALLAST_SPEED--;
+  }
+}
+
+// Count steering Up() --> Increases the steering sensitivity
+void count_steering_up(void) {
+  if (STEERING_SPEED > STEERING_MAX) {
+    STEERING_SPEED = STEERING_MAX; // limit at max
+  }
+  else {
+    STEERING_SPEED++;
+  }
+}
+
+// Count Steering Down() --> Decreases the steering sensitivity
+void count_steering_down(void) {
+  if (STEERING_SPEED < STEERING_MIN) {
+    STEERING_SPEED = STEERING_MIN; // limit at min
+  }
+  else {
+    STEERING_SPEED--;
   }
 }
