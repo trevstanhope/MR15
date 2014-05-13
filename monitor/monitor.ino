@@ -2,94 +2,87 @@
   Monitor Subsystem for MR15
   UNO or ALAMODE
   Reads sensors and relays output over serial
-  
-  Responsible for the following:
-    - Fuel Flow Sensor
-    - Wheel RPM Sensor
-    - Temperature/Humidity Sensor (DHT22)
-    
-  Output:
-    {
-      'fuel': float,
-      'wheel': float,
-      'temp': float,
-      'humidity': float,
-      'engine':float
-    }
 */
 
 /* --- Libraries --- */
-#include <SoftwareSerial.h> // needed for RFID module.
+#include "DallasTemperature.h" // needed for DS18B20
+#include "OneWire.h" // needed for DS18B20
 #include "stdio.h" // needed for dtostrf()
-#include "DHT.h"
+#include "DHT.h" // needed for box conditions
 
 /* --- Pins --- */
 #define DHT_PIN 4
+#define DHT_TYPE DHT22
 #define FUEL_PIN 5
 #define WHEEL_PIN 6
+#define DS18B20_PIN 7
 
 /* --- Interrupts --- */
 #define FUEL_INT 0
-#define WHEEL_INT 1
+#define ENGINE_INT 1
+#define WHEEL_INT 3
 
 /* --- Constants --- */
-#define SERIAL_BAUD 9600
-#define SERIAL_TIMEOUT 10 // disregard transmission after 10 ms 
-#define SERIAL_WAIT 1000 // wait 1000ms before engaging the serial connection
-#define DHT_TYPE 22
-#define INTERVAL 100
-#define SIZE 128
+const int SERIAL_BAUD = 9600;
+const int SERIAL_WAIT = 1000; // wait 1000ms before engaging the serial connection
+const int INTERVAL = 1000; // sample interval
+const int BUFFER_SIZE = 128; // buffer length
 
 /* --- Functions --- */
-float check_temp(void);
-float check_humidity(void);
-float check_fuel(void);
-float check_wheel(void);
-void count_wheel(void);
-void count_fuel(void);
+float get_box_temp(void);
+float get_box_humidity(void);
+float get_engine_lph(void);
+float get_engine_rpm(void);
+float check_engine_temp(void);
+void count_fuel_pulse(void);
+void count_engine_pulse(void);
 
 /* --- Objects --- */
+OneWire oneWire(DS18B20_PIN);
+DallasTemperature temperature(&oneWire);
 DHT dht(DHT_PIN, DHT_TYPE);
 
 /* --- Variables --- */
-volatile int TEMP = 0;
-volatile int HUMIDITY = 0;
-volatile int FUEL = 0;
-volatile int WHEEL = 0;
-volatile int FUEL_COUNT = 0;
-volatile int WHEEL_COUNT = 0;
+volatile int BOX_TEMP = 0;
+volatile int BOX_HUMIDITY = 0;
+volatile int ENGINE_RPM = 0;
+volatile int ENGINE_LPH = 0;
+volatile int ENGINE_TEMP = 0;
+volatile int LPH_COUNT = 0;
+volatile int RPM_COUNT = 0;
 volatile int TIME = 0;
 
 /* --- Buffers --- */
-char SENSORS[SIZE];
+char SENSORS[BUFFER_SIZE];
 
 /* --- Setup --- */
 void setup() {
   pinMode(FUEL_PIN, INPUT);
   pinMode(WHEEL_PIN, INPUT);
-  dht.begin();
   delay(SERIAL_WAIT);
   Serial.begin(SERIAL_BAUD);
-  Serial.setTimeout(SERIAL_TIMEOUT);
   attachInterrupt(FUEL_INT, count_fuel, RISING); // Whenever an interrupt is detected, call the respective counter function
-  attachInterrupt(WHEEL_INT, count_wheel, CHANGE);
+  attachInterrupt(ENGINE_INT, count_engine, RISING);
+  dht.begin();
+  temperature.begin();
 }
 
 /* --- Loop --- */
 void loop() {
-  TEMP = check_temp();
-  HUMIDITY = check_humidity();
-  FUEL = check_fuel(TIME);
-  WHEEL = check_wheel(TIME);
+  BOX_TEMP = get_box_temp();
+  BOX_HUMIDITY = get_box_humidity();
+  ENGINE_TEMP = get_engine_temp();
+  ENGINE_RPM = get_engine_rpm(TIME);
+  ENGINE_LPH = get_engine_lph(TIME);
   TIME = millis();
-  sprintf(SENSORS, "{'temp':%d,'humidity':%d,'fuel':%d,'wheel':%d}", TEMP, HUMIDITY, FUEL, WHEEL); // Convert to string and send over serial
+  sprintf(SENSORS, "{'box_temp':%d,'box_humidity':%d,'engine_lph':%d,'engine_rpm':%d}", BOX_TEMP, BOX_HUMIDITY, ENGINE_LPH, ENGINE_RPM); // Convert to string and send over serial
   Serial.println(SENSORS);
   delay(INTERVAL);
 }
 
 /* --- Check Functions --- */
-// Check Temp() --> Returns the temperature inside the box
-float check_temp() {
+// Get Temp() --> Returns the temperature inside the box
+float get_box_temp(void) {
   float val = dht.readTemperature();
   if (isnan(val)) {
     return 0;
@@ -99,8 +92,8 @@ float check_temp() {
   }
 }
 
-// Check Humidity() --> Returns the humidity inside the box
-float check_humidity() {
+// Get Humidity --> Returns the humidity inside the box
+float get_box_humidity(void) {
   float val;
   if (isnan(val)) {
     return 0;
@@ -110,39 +103,35 @@ float check_humidity() {
   }
 }
 
-// Check Wheel() --> Returns RPM of wheel
-float check_wheel(int start) {
-  float val = WHEEL_COUNT / (millis() - start);
-  WHEEL_COUNT = 0;
+// Get Engine Temperature --> Returns engine temperature
+float get_engine_temp(void) {
+  float val = 0;
+  temperature.requestTemperatures();
+  val = temperature.getTempCByIndex(0);
   return val;
 }
 
-// Check Fuel() --> Returns LPH of fuel
-float check_fuel(int start) {
-  float val = FUEL_COUNT / (millis() - start);
-  FUEL_COUNT = 0;
+// Get Fuel LPH() --> Returns LPH of fuel
+float get_engine_lph(int start) {
+  float val = LPH_COUNT / (millis() - start);
+  LPH_COUNT = 0;
   return val;
 }
 
-// Check Engine() --> Returns LPH of fuel
-float check_fuel(int start) {
-  float val = FUEL_COUNT / (millis() - start);
-  FUEL_COUNT = 0;
+// Get Engine RPM --> Returns RPM of engine
+float get_engine_rpm(int start) {
+  float val = RPM_COUNT / (millis() - start);
+  RPM_COUNT = 0;
   return val;
 }
 
 /* --- Interrupt Functions --- */
-// Count Wheel() --> Increments wheel counter
-void count_wheel() {
-  WHEEL_COUNT++;
-}
-
-// Count Fuel() --> Increments fuel counter
+// Count Fuel --> Increments fuel LPH counter
 void count_fuel() {
-  FUEL_COUNT++;
+  LPH_COUNT++;
 }
 
-// Count Engine() --> Incremenets engine RPM counter
+// Count Engine --> Incremenets engine RPM counter
 void count_engine() {
-  ENGINE_COUNT++;
+  RPM_COUNT++;
 }
