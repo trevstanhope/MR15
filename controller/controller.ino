@@ -147,6 +147,16 @@ void setup() {
   Serial.begin(USB_BAUD);
   Serial3.begin(RFID_BAUD); // Pins 14 and 15
   
+  // Enable Analog Inputs
+  pinMode(STEERING_POT_PIN, INPUT);
+  pinMode(ACTUATOR_POT_PIN, INPUT);
+  pinMode(GUARD_PIN, INPUT);
+
+  // Enable Analog Outputs
+  pinMode(STEERING_POT_POUT, OUTPUT); digitalWrite(STEERING_POT_POUT, LOW);
+  pinMode(ACTUATOR_POT_POUT, OUTPUT); digitalWrite(ACTUATOR_POT_POUT, LOW);
+  pinMode(GUARD_POUT, OUTPUT); digitalWrite(GUARD_POUT, LOW);
+  
   // Enable Digital Switch Inputs
   pinMode(BUTTON_KILL_PIN, INPUT);
   pinMode(SEAT_KILL_PIN, INPUT);
