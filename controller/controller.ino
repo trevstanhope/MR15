@@ -34,10 +34,8 @@
 #define MOTOR2_ENABLE_PIN 12
 
 /* --- Analog Pins --- */
-#define STEERING_POT_POUT A8
-#define STEERING_POT_PIN A9
-#define ACTUATOR_POT_POUT A10
-#define ACTUATOR_POT_PIN A11
+#define STEERING_POT_PIN A3
+#define ACTUATOR_POT_PIN A4
 #define GUARD_POUT A12
 #define GUARD_PIN A13
 
@@ -56,20 +54,20 @@
 #define STEERING_DOWN_INT 2 // PIN 21
 
 /* --- Switch Pins --- */
-#define NEAR_LIMIT_POUT 22
-#define NEAR_LIMIT_PIN 23
-#define FAR_LIMIT_POUT 24
-#define FAR_LIMIT_PIN 25
-#define BRAKES_POUT 26
-#define BRAKES_PIN 27
-#define IGNITION_POUT 28
-#define IGNITION_PIN 29
-#define SEAT_KILL_POUT 30
-#define SEAT_KILL_PIN 31
-#define HITCH_KILL_POUT 32
-#define HITCH_KILL_PIN 33
-#define BUTTON_KILL_POUT 34
-#define BUTTON_KILL_PIN 35
+#define IGNITION_POUT 22
+#define IGNITION_PIN 23
+#define SEAT_KILL_POUT 24
+#define SEAT_KILL_PIN 25
+#define HITCH_KILL_POUT 26
+#define HITCH_KILL_PIN 27
+#define BUTTON_KILL_POUT 28
+#define BUTTON_KILL_PIN 29
+#define BRAKES_POUT 30
+#define BRAKES_PIN 31
+#define NEAR_LIMIT_POUT 32
+#define NEAR_LIMIT_PIN 33
+#define FAR_LIMIT_POUT 34
+#define FAR_LIMIT_PIN 35
 
 /* --- Relay Pins --- */
 #define UNUSED_RELAY_PIN 46
@@ -104,8 +102,8 @@ const int RFID_BAUD = 9600;
 const int IGNITION_WAIT = 200;
 const int BALLAST_WAIT = 200;
 const int STEERING_WAIT = 200;
-const int KILL_WAIT = 500;
-const int CHECK_WAIT = 10;
+const int KILL_WAIT = 500; 
+const int CHECK_WAIT = 1; // check things
 const int STANDBY_WAIT = 20;
 const int MOTORS_WAIT = 20;
 const int BUFFER_SIZE = 512;
@@ -116,7 +114,7 @@ const int STEERING_MULTIPLIER = 25;
 const int BALLAST_MIN = -2;
 const int BALLAST_MAX = 2;
 const int BALLAST_MULTIPLIER = 25;
-const int LIGHT_THRESHOLD = 50;
+const int LIGHT_THRESHOLD = 500;
 
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
@@ -150,23 +148,23 @@ void setup() {
   // Enable Analog Inputs
   pinMode(STEERING_POT_PIN, INPUT);
   pinMode(ACTUATOR_POT_PIN, INPUT);
-  pinMode(GUARD_PIN, INPUT);
+  pinMode(GUARD_PIN, INPUT); digitalWrite(GUARD_PIN, HIGH);
 
   // Enable Analog Outputs
-  pinMode(STEERING_POT_POUT, OUTPUT); digitalWrite(STEERING_POT_POUT, LOW);
-  pinMode(ACTUATOR_POT_POUT, OUTPUT); digitalWrite(ACTUATOR_POT_POUT, LOW);
   pinMode(GUARD_POUT, OUTPUT); digitalWrite(GUARD_POUT, LOW);
   
   // Enable Digital Switch Inputs
-  pinMode(BUTTON_KILL_PIN, INPUT);
-  pinMode(SEAT_KILL_PIN, INPUT);
-  pinMode(HITCH_KILL_PIN,INPUT);
-  pinMode(NEAR_LIMIT_PIN, INPUT);
-  pinMode(FAR_LIMIT_PIN, INPUT);
-  pinMode(BRAKES_PIN, INPUT);
-  pinMode(GUARD_PIN, INPUT);
+  pinMode(IGNITION_PIN, INPUT); digitalWrite(IGNITION_PIN, HIGH);
+  pinMode(BUTTON_KILL_PIN, INPUT); digitalWrite(BUTTON_KILL_PIN, HIGH);
+  pinMode(SEAT_KILL_PIN, INPUT); digitalWrite(SEAT_KILL_PIN, HIGH);
+  pinMode(HITCH_KILL_PIN,INPUT); digitalWrite(HITCH_KILL_PIN, HIGH);
+  pinMode(NEAR_LIMIT_PIN, INPUT); digitalWrite(NEAR_LIMIT_PIN, HIGH);
+  pinMode(FAR_LIMIT_PIN, INPUT); digitalWrite(FAR_LIMIT_PIN, HIGH);
+  pinMode(BRAKES_PIN, INPUT); digitalWrite(BRAKES_PIN, HIGH);
+  pinMode(GUARD_PIN, INPUT); digitalWrite(GUARD_PIN, HIGH);
   
   // Enable Digital Switch Outputs
+  pinMode(IGNITION_POUT, OUTPUT); digitalWrite(IGNITION_POUT, LOW);
   pinMode(BUTTON_KILL_POUT, OUTPUT); digitalWrite(BUTTON_KILL_POUT, LOW);
   pinMode(SEAT_KILL_POUT, OUTPUT); digitalWrite(SEAT_KILL_POUT, LOW);
   pinMode(HITCH_KILL_POUT, OUTPUT); digitalWrite(HITCH_KILL_POUT, LOW);
@@ -214,7 +212,7 @@ void loop() {
   else if (STATE == 1) {
     if (SEAT || HITCH || BUTTON) {
       kill(); // kill engine
-      STATE = 1;
+      STATE = 0;
     }
     else if (IGNITION && !BRAKES && !GUARD) {
       ignition(); // execute ignition
@@ -366,9 +364,9 @@ boolean check_rfid(void) {
 
 // Check Ignition() --> Returns true if ignition engaged
 boolean check_ignition(void) {
-  if (digitalRead(IGNITION_PIN)) {
+  if (!digitalRead(IGNITION_PIN)) {
     delay(CHECK_WAIT);
-    if (digitalRead(IGNITION_PIN)) {
+    if (!digitalRead(IGNITION_PIN)) {
       return true;
     }
     else {
@@ -446,9 +444,9 @@ boolean check_brakes(void) {
 
 // Check Guard() --> Returns true if guard open
 boolean check_guard(void) {
-  if (analogRead(GUARD_PIN) >= LIGHT_THRESHOLD) {
+  if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
     delay(CHECK_WAIT);
-    if (analogRead(GUARD_PIN) >= LIGHT_THRESHOLD) {
+    if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
       return true;
     }
     else {
