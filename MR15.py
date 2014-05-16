@@ -23,10 +23,11 @@ CONTROLLER_DEV = '/dev/ttyACM0' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
 MONITOR_PARAMS = ['fuel','wheel', 'temp','humidity']
-CONTROLLER_PARAMS = ['brakes','seat','ballast','steering','hitch','guard','near','far', 'state','ignition']
+CONTROLLER_PARAMS = ['brakes','seat','hitch','guard','near','far', 'state','ignition']
 
 # Control system class
 class Tractor:
+    
     def __init__(self):
         print('[Enabling Monitor]')
         try:
@@ -38,6 +39,7 @@ class Tractor:
             self.controller = serial.Serial(CONTROLLER_DEV,CONTROLLER_BAUD,timeout=0.1)
         except Exception as error:
             print('--> ' + str(error))
+            
     def check_monitor(self):
         print('[Getting EMU State]')
         try:
@@ -70,6 +72,7 @@ class Tractor:
 
 # Display system 
 class Display(object):
+    
     def __init__(self, master, **kwargs):
         print('[Initializing Display]')
         pad = 3
@@ -79,7 +82,8 @@ class Display(object):
             master.winfo_screenwidth()-pad,
             master.winfo_screenheight()-pad)
         )
-        self.set_layout() # call the set the UI layout fnc 
+        self.set_layout() # call the set the UI layout fnc
+        
     def set_layout(self):
         print('[Setting Layout]')
 #        self.master.overrideredirect(True) # make fullscreen
