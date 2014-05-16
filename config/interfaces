@@ -1,0 +1,17 @@
+# /etc/network/interfaces
+# Script file for system interface definitions used by RPi slaves
+
+# Local
+auto lo
+iface lo inet loopback
+iface eth0 inet dhcp
+
+# Ad-hoc
+auto wlan0
+allow-hotplug wlan0
+iface wlan0 inet static
+wireless-essid MR15
+wireless-mode managed
+gateway 10.42.0.1
+address 10.42.0.3
+netmask 255.255.255.0
