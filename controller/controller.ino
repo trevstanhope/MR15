@@ -34,10 +34,10 @@
 #define MOTOR2_ENABLE_PIN 12
 
 /* --- Analog Pins --- */
-#define STEERING_POT_PIN A3
-#define ACTUATOR_POT_PIN A4
-#define GUARD_POUT A12
-#define GUARD_PIN A13
+#define STEERING_POT_PIN A2
+#define ACTUATOR_POT_PIN A3
+#define GUARD_POUT A14
+#define GUARD_PIN A15
 
 /* --- Serial Pins -- */
 #define RFID_TX_PIN 16
@@ -107,14 +107,20 @@ const int CHECK_WAIT = 1; // check things
 const int STANDBY_WAIT = 20;
 const int MOTORS_WAIT = 20;
 const int BUFFER_SIZE = 512;
-const int STEERING_MIN = 0;
-const int STEERING_NORMAL = 2;
+const int STEERING_MIN = 1;
 const int STEERING_MAX = 4;
-const int STEERING_MULTIPLIER = 25;
 const int BALLAST_MIN = -2;
 const int BALLAST_MAX = 2;
-const int BALLAST_MULTIPLIER = 25;
-const int LIGHT_THRESHOLD = 500;
+const int LIGHT_THRESHOLD = 512;
+const int ACTUATOR_RIGHT = 39;
+const int ACTUATOR_LEFT = 204;
+const int STEERING_RIGHT = 0;
+const int STEERING_LEFT = 1023;
+const int COEF_P = 0;
+const int COEF_I = 0;
+const int COEF_D = 0;
+const int BALLAST_MULTIPLIER = 50;
+const int DUTY_MAX = 400;
 
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
@@ -131,9 +137,17 @@ volatile boolean IGNITION = false;
 volatile boolean RFID = false;
 volatile int STEERING_POSITION = 0;
 volatile int ACTUATOR_POSITION = 0;
-volatile int STEERING_SPEED = STEERING_NORMAL;
+volatile float STEERING_PERCENT = 0;
+volatile float ACTUATOR_PERCENT = 0;
+volatile int STEERING_SPEED = STEERING_MIN;
 volatile int BALLAST_SPEED = 0;
+volatile int ERROR = 0;
+volatile int DERIVATIVE = 0;
+volatile int INTEGRAL = 0;
+volatile int DUTY_CYCLE = 0;
 volatile int STATE = 0;
+volatile int DT = 0;
+
 
 /* --- Character Buffer --- */
 char BUFFER[BUFFER_SIZE];
@@ -144,6 +158,7 @@ void setup() {
   // Enable Serials
   Serial.begin(USB_BAUD);
   Serial3.begin(RFID_BAUD); // Pins 14 and 15
+  Serial3.write(READ);
   
   // Enable Analog Inputs
   pinMode(STEERING_POT_PIN, INPUT);
@@ -152,7 +167,7 @@ void setup() {
 
   // Enable Analog Outputs
   pinMode(GUARD_POUT, OUTPUT); digitalWrite(GUARD_POUT, LOW);
-  
+
   // Enable Digital Switch Inputs
   pinMode(IGNITION_PIN, INPUT); digitalWrite(IGNITION_PIN, HIGH);
   pinMode(BUTTON_KILL_PIN, INPUT); digitalWrite(BUTTON_KILL_PIN, HIGH);
@@ -187,6 +202,7 @@ void setup() {
 
 /* --- Loop --- */
 void loop() {
+  int a = millis();
   SEAT = check_seat();
   HITCH = check_hitch();
   BUTTON = check_button();
@@ -203,10 +219,6 @@ void loop() {
       standby();
       STATE = 1;
     }
-    else {
-      steering();
-      ballast();
-    }
   }
   // If in State 1 (STANDBY)...
   else if (STATE == 1) {
@@ -218,10 +230,6 @@ void loop() {
       ignition(); // execute ignition
       STATE = 2;
     }
-    else {
-      steering();
-      ballast();
-    }
   }
   // If in State 2 (RUNNING)
   else if (STATE == 2) {
@@ -229,19 +237,19 @@ void loop() {
       kill(); // kill engine
       STATE = 1;
     }
-    else {
-      steering();
-      ballast();
-    }
   }
   // If in State ? (UNKNOWN)
   else {
     STATE = 0;
   }
+  steering();
+  ballast();
   
   // Print to serial
   sprintf(BUFFER,"{'bal_spd':%d,'str_spd':%d,'str_pos':%d,'act_pos':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'near':%d,'far':%d,'ignition':%d,'state':%d}",BALLAST_SPEED,STEERING_SPEED,STEERING_POSITION,ACTUATOR_POSITION,SEAT,BRAKES,GUARD,HITCH,BUTTON,NEAR,FAR,IGNITION,STATE);
   Serial.println(BUFFER);
+  int b = millis();
+  DT = (b-a);
 }
 
 /* --- Engine State Functions --- */
@@ -297,19 +305,33 @@ void steering(void) {
   // Read Current positions of Actuator and Steering wheel
   STEERING_POSITION = analogRead(STEERING_POT_PIN);
   ACTUATOR_POSITION = analogRead(ACTUATOR_POT_PIN);
+  STEERING_PERCENT = 100 * STEERING_SPEED * (float(STEERING_POSITION - STEERING_RIGHT) / float(STEERING_LEFT - STEERING_RIGHT));
+  ACTUATOR_PERCENT = 100 * STEERING_SPEED * (float(ACTUATOR_POSITION - ACTUATOR_RIGHT) / float(ACTUATOR_LEFT - ACTUATOR_RIGHT));
+  if (ACTUATOR_PERCENT > 100) {
+    ACTUATOR_PERCENT = 100;
+  }
+  if (STEERING_PERCENT > 100) {
+    STEERING_PERCENT = 100;
+  }
+  
+  // Calculate PID
+  DERIVATIVE = ((ACTUATOR_PERCENT - STEERING_PERCENT) - ERROR) / DT; // (error - last_error)/dt
+  ERROR = ACTUATOR_PERCENT - STEERING_PERCENT;
+  DUTY_CYCLE = (COEF_P * ERROR) + (COEF_I * INTEGRAL) + (COEF_D * DERIVATIVE);
   
   // If the actuator is returning a position LEFT of the steering wheel, activate the actuator to go RIGHT (NEGATIVE)
   // If the actuator is returning a position RIGHT of the steering wheel, activate the actuator to go LEFT (POSITIVE)
   // If actuator position equals steering position, disable the actuator
-  if (ACTUATOR_POSITION < STEERING_POSITION) {
-    MOTORS.setM1Speed(-STEERING_SPEED*STEERING_MULTIPLIER);
+  if (DUTY_CYCLE > DUTY_MAX) {
+    DUTY_CYCLE = DUTY_MAX;
   }
-  else if (ACTUATOR_POSITION > STEERING_POSITION) {
-    MOTORS.setM1Speed(STEERING_SPEED*STEERING_MULTIPLIER);
+  else if (DUTY_CYCLE < -DUTY_MAX) {
+    DUTY_CYCLE = -DUTY_MAX;
   }
   else {
-    MOTORS.setM1Speed(0);
+    INTEGRAL += ERROR * DT;
   }
+  MOTORS.setM1Speed(DUTY_CYCLE);
 }
 
 // Ballast() --> Moves ballast
@@ -444,6 +466,7 @@ boolean check_brakes(void) {
 
 // Check Guard() --> Returns true if guard open
 boolean check_guard(void) {
+  Serial.println(analogRead(GUARD_PIN));
   if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
     delay(CHECK_WAIT);
     if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
