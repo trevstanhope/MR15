@@ -5,7 +5,7 @@ sudo apt-get update
 sudo apt-get install python-serial -y
 sudo apt-get install python-tk -y
 sudo apt-get install unclutter -y
-sudo apt-get install python-imaging-tk
+sudo apt-get install python-imaging-tk -y
 
 ## Splash Screen
 sudo apt-get install fbi
@@ -27,7 +27,7 @@ sudo cp config/autostart /etc/xdg/lxsession/LXDE/autostart
 sudo cp config/lightdm.conf /etc/lightdm/lightdm.conf
 
 # Alamode
-sudo apt-get install arduino arduino-mk
+sudo apt-get install arduino arduino-mk -y
 sudo cp configs/avrdude /usr/bin/avrdude
 sudo cp configs/avrdude /usr/share/arduino/hardware/tools
 sudo cp configs/avrdude.conf  /usr/share/arduino/hardware/tools
