@@ -35,7 +35,7 @@ float get_box_temp(void);
 float get_box_humidity(void);
 float get_engine_lph(void);
 float get_engine_rpm(void);
-float check_engine_temp(void);
+float get_engine_temp(void);
 void count_fuel_pulse(void);
 void count_engine_pulse(void);
 
