@@ -86,7 +86,7 @@ class Display(object):
         
     def set_layout(self):
         print('[Setting Layout]')
-#        self.master.overrideredirect(True) # make fullscreen
+        self.master.overrideredirect(True) # make fullscreen
         self.master.focus_set()
         self.master.state("normal")
         
