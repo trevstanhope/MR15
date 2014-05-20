@@ -44,14 +44,11 @@
 #define RFID_RX_PIN 17
 
 /* --- Interrupt Pins --- */
-#define BALLAST_UP_PIN 18 // INTERRUPT 5
-#define BALLAST_DOWN_PIN 19  // INTERRUPT 4
-#define STEERING_UP_PIN 20 // INTERRUPT 3
-#define STEERING_DOWN_PIN 21 // INTERRUPT 2
-#define BALLAST_UP_INT 5 // PIN 18
-#define BALLAST_DOWN_INT 4 // PIN 19
-#define STEERING_UP_INT 3 // PIN 20
-#define STEERING_DOWN_INT 2 // PIN 21
+#define JOYSTICK_POUT 45
+#define BALLAST_UP_PIN 47 // INTERRUPT 5
+#define BALLAST_DOWN_PIN 49  // INTERRUPT 4
+#define STEERING_UP_PIN 51 // INTERRUPT 3
+#define STEERING_DOWN_PIN 53 // INTERRUPT 2
 
 /* --- Switch Pins --- */
 #define IGNITION_POUT 22
@@ -116,11 +113,12 @@ const int ACTUATOR_RIGHT = 39;
 const int ACTUATOR_LEFT = 204;
 const int STEERING_RIGHT = 0;
 const int STEERING_LEFT = 1023;
-const int COEF_P = 0;
-const int COEF_I = 0;
+const int COEF_P = 3;
+const int COEF_I = 1;
 const int COEF_D = 0;
 const int BALLAST_MULTIPLIER = 50;
-const int DUTY_MAX = 400;
+const int ACTUATOR_SPEED = 400;
+const int NOISE = 2;
 
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
@@ -141,13 +139,10 @@ volatile float STEERING_PERCENT = 0;
 volatile float ACTUATOR_PERCENT = 0;
 volatile int STEERING_SPEED = STEERING_MIN;
 volatile int BALLAST_SPEED = 0;
-volatile int ERROR = 0;
-volatile int DERIVATIVE = 0;
-volatile int INTEGRAL = 0;
+volatile float ERROR = 0;
 volatile int DUTY_CYCLE = 0;
 volatile int STATE = 0;
 volatile int DT = 0;
-
 
 /* --- Character Buffer --- */
 char BUFFER[BUFFER_SIZE];
@@ -194,10 +189,11 @@ void setup() {
   pinMode(STARTER_RELAY_PIN, OUTPUT); digitalWrite(STARTER_RELAY_PIN, HIGH);
   
   // Enable Interrupts
-  attachInterrupt(STEERING_UP_INT, count_steering_up, RISING);
-  attachInterrupt(STEERING_DOWN_INT, count_steering_down, RISING);
-  attachInterrupt(BALLAST_UP_INT, count_ballast_up, RISING);
-  attachInterrupt(BALLAST_DOWN_INT, count_ballast_down, RISING);
+  pinMode(JOYSTICK_POUT, OUTPUT); digitalWrite(JOYSTICK_POUT, LOW);
+  pinMode(BALLAST_UP_PIN, INPUT); // INTERRUPT 5
+  pinMode(BALLAST_DOWN_PIN, INPUT); // INTERRUPT 4
+  pinMode(STEERING_UP_PIN, INPUT); // INTERRUPT 3
+  pinMode(STEERING_DOWN_PIN, INPUT); // INTERRUPT 2
 }
 
 /* --- Loop --- */
@@ -305,32 +301,25 @@ void steering(void) {
   // Read Current positions of Actuator and Steering wheel
   STEERING_POSITION = analogRead(STEERING_POT_PIN);
   ACTUATOR_POSITION = analogRead(ACTUATOR_POT_PIN);
-  STEERING_PERCENT = 100 * STEERING_SPEED * (float(STEERING_POSITION - STEERING_RIGHT) / float(STEERING_LEFT - STEERING_RIGHT));
-  ACTUATOR_PERCENT = 100 * STEERING_SPEED * (float(ACTUATOR_POSITION - ACTUATOR_RIGHT) / float(ACTUATOR_LEFT - ACTUATOR_RIGHT));
-  if (ACTUATOR_PERCENT > 100) {
-    ACTUATOR_PERCENT = 100;
-  }
-  if (STEERING_PERCENT > 100) {
+  STEERING_PERCENT = 100.0 * STEERING_SPEED * (float(STEERING_POSITION - STEERING_RIGHT) / float(STEERING_LEFT - STEERING_RIGHT));
+  if (STEERING_PERCENT > 100) { 
     STEERING_PERCENT = 100;
   }
+  ACTUATOR_PERCENT = 100.0 * (float(ACTUATOR_POSITION - ACTUATOR_RIGHT) / float(ACTUATOR_LEFT - ACTUATOR_RIGHT));
+  Serial.println(ACTUATOR_PERCENT);
+  Serial.println(STEERING_PERCENT);
   
   // Calculate PID
-  DERIVATIVE = ((ACTUATOR_PERCENT - STEERING_PERCENT) - ERROR) / DT; // (error - last_error)/dt
-  ERROR = ACTUATOR_PERCENT - STEERING_PERCENT;
-  DUTY_CYCLE = (COEF_P * ERROR) + (COEF_I * INTEGRAL) + (COEF_D * DERIVATIVE);
-  
-  // If the actuator is returning a position LEFT of the steering wheel, activate the actuator to go RIGHT (NEGATIVE)
-  // If the actuator is returning a position RIGHT of the steering wheel, activate the actuator to go LEFT (POSITIVE)
-  // If actuator position equals steering position, disable the actuator
-  if (DUTY_CYCLE > DUTY_MAX) {
-    DUTY_CYCLE = DUTY_MAX;
+  ERROR = STEERING_PERCENT - ACTUATOR_PERCENT;
+  DUTY_CYCLE = 20 * ERROR;
+  if (DUTY_CYCLE > 400) {
+    DUTY_CYCLE = 400;
   }
-  else if (DUTY_CYCLE < -DUTY_MAX) {
-    DUTY_CYCLE = -DUTY_MAX;
+  else if (DUTY_CYCLE < -400) {
+    DUTY_CYCLE = -400;
   }
-  else {
-    INTEGRAL += ERROR * DT;
-  }
+  Serial.println(ERROR);
+  Serial.println(DUTY_CYCLE);
   MOTORS.setM1Speed(DUTY_CYCLE);
 }
 
@@ -466,7 +455,7 @@ boolean check_brakes(void) {
 
 // Check Guard() --> Returns true if guard open
 boolean check_guard(void) {
-  Serial.println(analogRead(GUARD_PIN));
+  //Serial.println(analogRead(GUARD_PIN));
   if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
     delay(CHECK_WAIT);
     if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
