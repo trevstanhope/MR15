@@ -18,7 +18,7 @@ import Tkinter as tk
 import time
 
 # Global
-MONITOR_DEV = '/dev/ttyACM1' # '/dev/ttyS0'
+MONITOR_DEV = '/dev/ttyS0' # '/dev/ttyS0'
 CONTROLLER_DEV = '/dev/ttyACM0' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
@@ -103,7 +103,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         emu_label.pack()
-        emu_label.place(x=20, y=40)
+        emu_label.place(x=20, y=0)
         
         ## Fuel Label
         self.fuel_var = tk.StringVar()
@@ -115,7 +115,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         fuel_label.pack()
-        fuel_label.place(x=20, y=80)
+        fuel_label.place(x=20, y=40)
         
         ## Wheel Label
         self.wheel_var = tk.StringVar()
@@ -127,7 +127,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         wheel_label.pack()
-        wheel_label.place(x=20, y=120)
+        wheel_label.place(x=20, y=80)
         
         ## Temperature Label
         self.temp_var = tk.StringVar()
@@ -139,7 +139,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         temp_label.pack()
-        temp_label.place(x=20, y=160)
+        temp_label.place(x=20, y=120)
         
         ## Humidity Label
         self.humidity_var = tk.StringVar()
@@ -151,7 +151,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         humidity_label.pack()
-        humidity_label.place(x=20, y=200)
+        humidity_label.place(x=20, y=160)
         
         ## ECU Label
         self.ecu_var = tk.StringVar()
@@ -163,7 +163,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         ecu_label.pack()
-        ecu_label.place(x=20, y=280)
+        ecu_label.place(x=20, y=200)
         
         ## State Label
         self.state_var = tk.StringVar()
@@ -175,7 +175,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         state_label.pack()
-        state_label.place(x=20, y=320)
+        state_label.place(x=20, y=240)
         
         ## Steering Sensitivity Label
         self.steering_var = tk.StringVar()
@@ -187,7 +187,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         steering_label.pack()
-        steering_label.place(x=20, y=360)
+        steering_label.place(x=20, y=280)
         
         ## Ballast Speed Label
         self.ballast_var = tk.StringVar()
@@ -199,7 +199,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         ballast_label.pack()
-        ballast_label.place(x=20, y=400)
+        ballast_label.place(x=20, y=320)
         
     def update(self, monitor, control):
         print('[Updating Display]')
