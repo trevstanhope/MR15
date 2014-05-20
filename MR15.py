@@ -22,8 +22,9 @@ MONITOR_DEV = '/dev/ttyACM1' # '/dev/ttyS0'
 CONTROLLER_DEV = '/dev/ttyACM0' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
-MONITOR_PARAMS = ['fuel','wheel', 'temp','humidity']
+MONITOR_PARAMS = ['box_temp','box_rh', 'engine_lph','engine_rpm', 'engine_temp]
 CONTROLLER_PARAMS = ['brakes','seat','hitch','guard','near','far', 'state','ignition']
+SERIAL_TIMEOUT = 0.1
 
 # Control system class
 class Tractor:
@@ -31,26 +32,27 @@ class Tractor:
     def __init__(self):
         print('[Enabling Monitor]')
         try:
-            self.monitor = serial.Serial(MONITOR_DEV,MONITOR_BAUD, timeout=0.1)
+            self.monitor = serial.Serial(MONITOR_DEV, MONITOR_BAUD, timeout=SERIAL_TIMEOUT)
         except Exception as error:
-            print('--> ' + str(error))
+            print('\t' + str(error))
         print('[Enabling Controller]')
         try:
-            self.controller = serial.Serial(CONTROLLER_DEV,CONTROLLER_BAUD,timeout=0.1)
+            self.controller = serial.Serial(CONTROLLER_DEV, CONTROLLER_BAUD,timeout=SERIAL_TIMEOUT)
         except Exception as error:
-            print('--> ' + str(error))
+            print('\t' + str(error))
             
     def check_monitor(self):
         print('[Getting EMU State]')
         try:
             literal = self.monitor.readline()
+            print('\tBuffer: ' + str(literal))
             response = ast.literal_eval(literal)
             for key in MONITOR_PARAMS:
                 try:
                     response[key]
                 except Exception:
                     response[key] = None
-            print('\t' + str(response))
+            print('\tParsed: ' + str(response))
             return response
         except Exception as error:
             print('\t' + str(error))
@@ -59,13 +61,14 @@ class Tractor:
         print('[Getting ECU State]')
         try:
             literal = self.controller.readline()
+            print('\tBuffer: ' + str(literal))
             response = ast.literal_eval(literal)
             for key in CONTROLLER_PARAMS:
                 try:
                     response[key]
                 except Exception:
                     response[key] = None
-            print('\t' + str(response))
+            print('\tParsed: ' + str(response))
             return response
         except Exception as error:
             print('\t' + str(error))
