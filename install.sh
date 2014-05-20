@@ -20,4 +20,4 @@ sudo chmod a+x /boot/cmdline.txt
 
 ## Ad-Hoc
 sudo apt-get install isc-dhcp-server -y
-sudo cp config/interfaces /etc/network/
+#sudo cp config/interfaces /etc/network/
