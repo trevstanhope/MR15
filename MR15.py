@@ -163,7 +163,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         ecu_label.pack()
-        ecu_label.place(x=20, y=200)
+        ecu_label.place(x=20, y=240)
         
         ## State Label
         self.state_var = tk.StringVar()
@@ -175,7 +175,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         state_label.pack()
-        state_label.place(x=20, y=240)
+        state_label.place(x=20, y=280)
         
         ## Steering Sensitivity Label
         self.steering_var = tk.StringVar()
@@ -187,7 +187,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         steering_label.pack()
-        steering_label.place(x=20, y=280)
+        steering_label.place(x=20, y=320)
         
         ## Ballast Speed Label
         self.ballast_var = tk.StringVar()
@@ -199,7 +199,7 @@ class Display(object):
             bg="#FFFFFF"
         )
         ballast_label.pack()
-        ballast_label.place(x=20, y=320)
+        ballast_label.place(x=20, y=360)
         
     def update(self, monitor, control):
         print('[Updating Display]')
