@@ -89,7 +89,7 @@ class Display(object):
         
     def set_layout(self):
         print('[Setting Layout]')
-        #self.master.overrideredirect(True) # make fullscreen
+        self.master.overrideredirect(True) # make fullscreen
         self.master.focus_set()
         self.master.state("normal")
         
@@ -204,10 +204,10 @@ class Display(object):
     def update(self, monitor, control):
         print('[Updating Display]')
         if (monitor):
-            self.fuel_var.set('Fuel Rate (L/H): ' + str(monitor['fuel']))
-            self.wheel_var.set('Wheel Rate (RPM): ' + str(monitor['wheel']))
-            self.temp_var.set('Temperature (C): ' + str(monitor['temp']))
-            self.humidity_var.set('Humidity (RH): ' + str(monitor['humidity']))
+            self.fuel_var.set('Fuel Rate (L/H): ' + str(monitor['engine_lph']))
+            self.wheel_var.set('Engine Rate (RPM): ' + str(monitor['engine_rpm']))
+            self.temp_var.set('Temperature (C): ' + str(monitor['box_temp']))
+            self.humidity_var.set('Humidity (RH): ' + str(monitor['box_rh']))
         else:
             print('\t NO EMU DATA')
         if (control):
