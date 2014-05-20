@@ -27,6 +27,7 @@ sudo cp config/autostart /etc/xdg/lxsession/LXDE/autostart
 sudo cp config/lightdm.conf /etc/lightdm/lightdm.conf
 
 # Alamode
+sudo apt-get install arduino arduino-mk
 sudo cp configs/avrdude /usr/bin/avrdude
 sudo cp configs/avrdude /usr/share/arduino/hardware/tools
 sudo cp configs/avrdude.conf  /usr/share/arduino/hardware/tools
@@ -37,4 +38,4 @@ sudo cp configs/80-alamode.rules /etc/udev/rules.d
 sudo chown root /usr/bin/avrdude /usr/share/arduino/hardware/tools/avrdude
 sudo chgrp root /usr/bin/avrdude /usr/share/arduino/hardware/tools/avrdude
 sudo chmod a+s /usr/bin/avrdude /usr/share/arduino/hardware/tools/avrdude
-sudo cp -r libs/DHT /usr/share/arduino/libraries
+sudo cp -r libs/* /usr/share/arduino/libraries
