@@ -36,8 +36,8 @@ float get_box_humidity(void);
 float get_engine_lph(int start);
 float get_engine_rpm(int start);
 float get_engine_temp(void);
-void count_fuel_pulse(void);
-void count_engine_pulse(void);
+void count_fuel(void);
+void count_engine(void);
 
 /* --- Objects --- */
 OneWire oneWire(DS18B20_PIN);
