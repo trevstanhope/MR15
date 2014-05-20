@@ -22,5 +22,19 @@ sudo chmod a+x /boot/cmdline.txt
 sudo apt-get install isc-dhcp-server -y
 #sudo cp config/interfaces /etc/network/
 
+# Fullscreen
 sudo cp config/autostart /etc/xdg/lxsession/LXDE/autostart 
 sudo cp config/lightdm.conf /etc/lightdm/lightdm.conf
+
+# Alamode
+sudo cp configs/avrdude /usr/bin/avrdude
+sudo cp configs/avrdude /usr/share/arduino/hardware/tools
+sudo cp configs/avrdude.conf  /usr/share/arduino/hardware/tools
+sudo cp configs/boards.txt  /usr/share/arduino/hardware/arduino
+sudo cp configs/cmdline.txt /boot
+sudo cp configs/inittab /etc
+sudo cp configs/80-alamode.rules /etc/udev/rules.d
+sudo chown root /usr/bin/avrdude /usr/share/arduino/hardware/tools/avrdude
+sudo chgrp root /usr/bin/avrdude /usr/share/arduino/hardware/tools/avrdude
+sudo chmod a+s /usr/bin/avrdude /usr/share/arduino/hardware/tools/avrdude
+sudo cp -r libs/DHT /usr/share/arduino/libraries
