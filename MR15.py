@@ -22,7 +22,7 @@ MONITOR_DEV = '/dev/ttyACM1' # '/dev/ttyS0'
 CONTROLLER_DEV = '/dev/ttyACM0' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
-MONITOR_PARAMS = ['box_temp','box_rh', 'engine_lph','engine_rpm', 'engine_temp]
+MONITOR_PARAMS = ['box_temp','box_rh', 'engine_lph','engine_rpm', 'engine_temp']
 CONTROLLER_PARAMS = ['brakes','seat','hitch','guard','near','far', 'state','ignition']
 SERIAL_TIMEOUT = 0.1
 
