@@ -22,8 +22,6 @@ MONITOR_DEV = '/dev/ttyACM0' # '/dev/ttyS0'
 CONTROLLER_DEV = '/dev/ttyACM1' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
-#MONITOR_PARAMS = ['box_temp','box_rh', 'engine_lph','engine_rpm', 'engine_temp']
-#CONTROLLER_PARAMS = ['brakes','seat','hitch','guard','near','far', 'state','ignition']
 SERIAL_TIMEOUT = 0.1
 
 # Control system class
@@ -131,17 +129,17 @@ class Display(object):
         engine_temp_label.pack()
         engine_temp_label.place(x=20, y=120)
         
-        ## Humidity Label
-        self.vps_temp_var = tk.StringVar()
-        self.vps_temp_var.set('VPS Temperature (C): ?')
-        vps_temp_label = tk.Label(
-            self.master,
-            textvariable=self.vps_temp_var,
-            font=("Helvetica", 24),
-            bg="#FFFFFF"
-        )
-        vps_temp_label.pack()
-        vps_temp_label.place(x=20, y=160)
+#        ## Humidity Label
+#        self.vps_temp_var = tk.StringVar()
+#        self.vps_temp_var.set('VPS Temperature (C): ?')
+#        vps_temp_label = tk.Label(
+#            self.master,
+#            textvariable=self.vps_temp_var,
+#            font=("Helvetica", 24),
+#            bg="#FFFFFF"
+#        )
+#        vps_temp_label.pack()
+#        vps_temp_label.place(x=20, y=160)
         
         ## ECU Label
         self.ecu_var = tk.StringVar()
@@ -153,7 +151,19 @@ class Display(object):
             bg="#FFFFFF"
         )
         ecu_label.pack()
-        ecu_label.place(x=20, y=240)
+        ecu_label.place(x=20, y=200)
+        
+        ## Warnings Label
+        self.warnings_var = tk.StringVar()
+        self.warnings_var.set('Warnings: None')
+        warnings_label = tk.Label(
+            self.master,
+            textvariable=self.warnings_var,
+            font=("Helvetica", 24),
+            bg="#FFFFFF"
+        )
+        warnings_label.pack()
+        warnings_label.place(x=20, y=240)
         
         ## State Label
         self.state_var = tk.StringVar()
@@ -201,7 +211,7 @@ class Display(object):
               self.fuel_var.set('Fuel Rate (L/H): ' + str(monitor['engine_lph']))
               self.wheel_var.set('Engine Rate (RPM): ' + str(monitor['engine_rpm']))
               self.engine_temp_var.set('Engine Temperature (C): ' + str(monitor['engine_temp']))
-              self.vps_temp_var.set('VPS Temperature (RH): ' + str(monitor['box_temp']))
+              #self.vps_temp_var.set('VPS Temperature (RH): ' + str(monitor['box_temp']))
             except Exception as err:
               self.emu_var.set('EMU: Error Setting Values')
         else:
@@ -213,8 +223,18 @@ class Display(object):
             try:
                 if control['state'] == 0:
                     state = 'OFF'
+                    if control['button']:
+                        self.warnings_var('Warnings: Kill button pressed')
+                    elif control['hitch']:
+                        self.warnings_var('Warnings: Hitch detached')
+                    elif control['seat']:
+                        self.warnings_var('Warnings: No operator in seat')
                 elif control['state'] == 1:
                     state = 'STANDBY'
+                    if control['ignition'] and not control['guard']:
+                        self.warnings_var('Warnings: CVT guard open')
+                    elif control['ignition'] and not control['brakes']:
+                        self.warnings_var('Warnings: Brakes not engaged')
                 elif control['state'] == 2:
                     state = 'RUNNING'
                 self.state_var.set('State: ' + state)

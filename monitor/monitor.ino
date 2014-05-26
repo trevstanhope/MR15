@@ -15,7 +15,6 @@
 #define ENGINE_PIN 3
 #define DHT_PIN 4
 #define DS18B20_PIN 5
-#define DHT_TYPE DHT11
 #define DIGITS 4
 #define PRECISION 2
 
@@ -31,7 +30,6 @@ const int BUFFER_SIZE = 128; // buffer length
 const int SENSOR_SIZE = 5;
 
 /* --- Functions --- */
-float get_box_temp(void);
 float get_engine_lph(void);
 float get_engine_rpm(void);
 float get_engine_temp(void);
@@ -41,7 +39,6 @@ void count_engine(void);
 /* --- Objects --- */
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature temperature(&oneWire);
-DHT dht(DHT_PIN, DHT_TYPE);
 
 /* --- Variables --- */
 volatile int LPH_COUNT = 0;
@@ -53,7 +50,6 @@ int RPM_B = 0;
 
 /* --- Buffers --- */
 char SENSORS[BUFFER_SIZE];
-char BOX_TEMP[SENSOR_SIZE];
 char ENGINE_RPM[SENSOR_SIZE];
 char ENGINE_LPH[SENSOR_SIZE];
 char ENGINE_TEMP[SENSOR_SIZE];
@@ -64,33 +60,20 @@ void setup() {
   Serial.begin(SERIAL_BAUD);
   attachInterrupt(FUEL_INT, count_fuel, RISING); // Whenever an interrupt is detected, call the respective counter function
   attachInterrupt(ENGINE_INT, count_engine, RISING);
-  dht.begin();
   temperature.begin();
 }
 
 /* --- Loop --- */
 void loop() {
-  dtostrf(get_box_temp(), DIGITS, PRECISION, BOX_TEMP); 
   dtostrf(get_engine_rpm(), DIGITS, PRECISION, ENGINE_RPM);
   dtostrf(get_engine_lph(), DIGITS, PRECISION, ENGINE_LPH);
   dtostrf(get_engine_temp(), DIGITS, PRECISION, ENGINE_TEMP);
-  sprintf(SENSORS, "{'box_temp':%s,'engine_lph':%s,'engine_rpm':%s,'engine_temp':%s}", BOX_TEMP, ENGINE_LPH, ENGINE_RPM, ENGINE_TEMP); // Convert to string and send over serial
+  sprintf(SENSORS, "{'engine_lph':%s,'engine_rpm':%s,'engine_temp':%s}", ENGINE_LPH, ENGINE_RPM, ENGINE_TEMP); // Convert to string and send over serial
   Serial.println(SENSORS);
   delay(INTERVAL);
 }
 
 /* --- Check Functions --- */
-// Get Temp() --> Returns the temperature inside the box
-float get_box_temp(void) {
-  float val = dht.readTemperature();
-  if (isnan(val)) {
-    return 0;
-  }
-  else {
-    return val;
-  }
-}
-
 // Get Engine Temperature --> Returns engine temperature
 float get_engine_temp(void) {
   float val = temperature.getTempCByIndex(0);
