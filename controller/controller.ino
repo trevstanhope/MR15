@@ -45,8 +45,8 @@
 
 /* --- Interrupt Pins --- */
 #define JOYSTICK_POUT 45
-#define BALLAST_UP_PIN 47 // INTERRUPT 5
-#define BALLAST_DOWN_PIN 49  // INTERRUPT 4
+#define BALLAST_UP_PIN 49 // INTERRUPT 5
+#define BALLAST_DOWN_PIN 47  // INTERRUPT 4
 #define STEERING_UP_PIN 51 // INTERRUPT 3
 #define STEERING_DOWN_PIN 53 // INTERRUPT 2
 
@@ -67,9 +67,9 @@
 #define FAR_LIMIT_PIN 35
 
 /* --- Relay Pins --- */
-#define UNUSED_RELAY_PIN 46
+#define UNUSED_RELAY_PIN 50
 #define STOP_RELAY_PIN 48
-#define STARTER_RELAY_PIN 50
+#define STARTER_RELAY_PIN 46
 #define REGULATOR_RELAY_PIN 52
 
 /* --- RFID Commands --- */
@@ -82,8 +82,6 @@ void ignition(void);
 void steering(void);
 void ballast(void);
 boolean check_rfid(void);
-boolean check_near(void);
-boolean check_far(void);
 boolean check_brakes(void);
 boolean check_hitch(void);
 boolean check_button(void);
@@ -96,7 +94,7 @@ void count_steering_down(void);
 /* --- Constants --- */
 const int USB_BAUD = 9600;
 const int RFID_BAUD = 9600;
-const int IGNITION_WAIT = 200;
+const int IGNITION_WAIT = 800;
 const int BALLAST_WAIT = 200;
 const int STEERING_WAIT = 200;
 const int KILL_WAIT = 500; 
@@ -118,7 +116,8 @@ const int COEF_I = 1;
 const int COEF_D = 0;
 const int BALLAST_MULTIPLIER = 50;
 const int ACTUATOR_SPEED = 400;
-const int NOISE = 2;
+const int NOISE = 30;
+const int BALLAST_THRESHOLD = 10000;
 
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
@@ -190,10 +189,10 @@ void setup() {
   
   // Enable Interrupts
   pinMode(JOYSTICK_POUT, OUTPUT); digitalWrite(JOYSTICK_POUT, LOW);
-  pinMode(BALLAST_UP_PIN, INPUT); // INTERRUPT 5
-  pinMode(BALLAST_DOWN_PIN, INPUT); // INTERRUPT 4
-  pinMode(STEERING_UP_PIN, INPUT); // INTERRUPT 3
-  pinMode(STEERING_DOWN_PIN, INPUT); // INTERRUPT 2
+  pinMode(BALLAST_UP_PIN, INPUT); digitalWrite(BALLAST_UP_PIN, HIGH);// INTERRUPT 5
+  pinMode(BALLAST_DOWN_PIN, INPUT); digitalWrite(BALLAST_DOWN_PIN, HIGH);// INTERRUPT 4
+  pinMode(STEERING_UP_PIN, INPUT); digitalWrite(STEERING_UP_PIN, HIGH);// INTERRUPT 3
+  pinMode(STEERING_DOWN_PIN, INPUT); digitalWrite(STEERING_DOWN_PIN, HIGH);// INTERRUPT 2
 }
 
 /* --- Loop --- */
@@ -204,10 +203,12 @@ void loop() {
   BUTTON = check_button();
   BRAKES = check_brakes();
   GUARD = check_guard();
-  NEAR = check_near();
-  FAR = check_far();
   IGNITION = check_ignition();
   RFID = check_rfid();
+  count_ballast_up();
+  count_ballast_down();
+  count_steering_up();
+  count_steering_down();
   
   // If in State 0 (OFF) ...
   if (STATE == 0) {
@@ -220,7 +221,7 @@ void loop() {
   else if (STATE == 1) {
     if (SEAT || HITCH || BUTTON) {
       kill(); // kill engine
-      STATE = 0;
+      STATE = 1;
     }
     else if (IGNITION && !BRAKES && !GUARD) {
       ignition(); // execute ignition
@@ -231,6 +232,7 @@ void loop() {
   else if (STATE == 2) {
     if (SEAT || HITCH || BUTTON) {
       kill(); // kill engine
+      standby();
       STATE = 1;
     }
   }
@@ -242,7 +244,7 @@ void loop() {
   ballast();
   
   // Print to serial
-  sprintf(BUFFER,"{'bal_spd':%d,'str_spd':%d,'str_pos':%d,'act_pos':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'near':%d,'far':%d,'ignition':%d,'state':%d}",BALLAST_SPEED,STEERING_SPEED,STEERING_POSITION,ACTUATOR_POSITION,SEAT,BRAKES,GUARD,HITCH,BUTTON,NEAR,FAR,IGNITION,STATE);
+  sprintf(BUFFER,"{'bal_spd':%d,'str_spd':%d,'str_pos':%d,'act_pos':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'ignition':%d,'rfid':%d, 'state':%d}",BALLAST_SPEED,STEERING_SPEED,STEERING_POSITION,ACTUATOR_POSITION,SEAT,BRAKES,GUARD,HITCH,BUTTON,IGNITION,RFID,STATE);
   Serial.println(BUFFER);
   int b = millis();
   DT = (b-a);
@@ -306,8 +308,8 @@ void steering(void) {
     STEERING_PERCENT = 100;
   }
   ACTUATOR_PERCENT = 100.0 * (float(ACTUATOR_POSITION - ACTUATOR_RIGHT) / float(ACTUATOR_LEFT - ACTUATOR_RIGHT));
-  Serial.println(ACTUATOR_PERCENT);
-  Serial.println(STEERING_PERCENT);
+  // Serial.println(ACTUATOR_PERCENT);
+  // Serial.println(STEERING_PERCENT);
   
   // Calculate PID
   ERROR = STEERING_PERCENT - ACTUATOR_PERCENT;
@@ -318,8 +320,12 @@ void steering(void) {
   else if (DUTY_CYCLE < -400) {
     DUTY_CYCLE = -400;
   }
-  Serial.println(ERROR);
-  Serial.println(DUTY_CYCLE);
+  else if (abs(DUTY_CYCLE) < NOISE) {
+    DUTY_CYCLE = 0;
+  }
+  
+  // Serial.println(ERROR);
+  // Serial.println(DUTY_CYCLE);
   MOTORS.setM1Speed(DUTY_CYCLE);
 }
 
@@ -337,23 +343,19 @@ void ballast(void) {
   // If the ballast speed is POSITIVE, activates the ballast FORWARD (POSITIVE) if the far limit is not engaged
   // If the ballast speed is NEGATIVE, activates the ballast BACKWARD (NEGATIVE) if the near limit is not engaged
   if (BALLAST_SPEED > 0) {
-    if (check_far()) {
+    if (MOTORS.getM2CurrentMilliamps() > BALLAST_THRESHOLD) {
       MOTORS.setM2Speed(0);
     }
     else {
-      MOTORS.setM2Speed(BALLAST_SPEED*BALLAST_MULTIPLIER);
-      delay(BALLAST_WAIT);
-      MOTORS.setM2Speed(0);
+      MOTORS.setM2Speed(BALLAST_SPEED * BALLAST_MULTIPLIER);
     }
   }
   else if (BALLAST_SPEED < 0) {
-    if (check_near()) {
+    if (MOTORS.getM2CurrentMilliamps() > BALLAST_THRESHOLD) {
       MOTORS.setM2Speed(0);
     }
     else {
-      MOTORS.setM2Speed(BALLAST_SPEED*BALLAST_MULTIPLIER);
-      delay(BALLAST_WAIT);
-      MOTORS.setM2Speed(0);
+      MOTORS.setM2Speed(BALLAST_SPEED * BALLAST_MULTIPLIER);
     }
   }
   else {
@@ -365,7 +367,7 @@ void ballast(void) {
 // Check RFID() --> Returns true if RFID detected
 boolean check_rfid(void) {
   Serial3.write(READ);
-  if (Serial3.read() > 0) {
+  if (Serial3.read() >= 0) {
     return true;
   }
   else {
@@ -470,40 +472,10 @@ boolean check_guard(void) {
   }
 }
 
-// Check Near() --> Returns true if limits engaged
-boolean check_near(void) {
-  if (digitalRead(NEAR_LIMIT_PIN)) {
-    delay(CHECK_WAIT);
-    if (digitalRead(NEAR_LIMIT_PIN)) {
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
-  else {
-    return false;
-  }
-}
-
-// Check Far() --> Returns true if switch engaged
-boolean check_far(void) {
-  if (digitalRead(FAR_LIMIT_PIN)) {
-    delay(CHECK_WAIT);
-    if (digitalRead(FAR_LIMIT_PIN)) {
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
-  else {
-    return false;
-  }
-}
 
 // Check Ballast Up() --> Increases/decreases the ballast speed
 void count_ballast_up(void) {
+  //Serial.println(digitalRead(BALLAST_UP_PIN));
   if (digitalRead(BALLAST_UP_PIN)) {
     delay(CHECK_WAIT);
     if (digitalRead(BALLAST_UP_PIN)) {
@@ -514,6 +486,7 @@ void count_ballast_up(void) {
 
 // Check Ballast Down() --> Increases/decreases the ballast speed
 void count_ballast_down(void) {
+  //Serial.println(digitalRead(BALLAST_DOWN_PIN));
   if (digitalRead(BALLAST_DOWN_PIN)) {
     delay(CHECK_WAIT);
     if (digitalRead(BALLAST_DOWN_PIN)) {
@@ -524,6 +497,7 @@ void count_ballast_down(void) {
 
 // Check Steering Up() --> Increases/decreases the steering sensitivity
 void count_steering_up(void) {
+  //Serial.println(digitalRead(STEERING_UP_PIN));
   if (digitalRead(STEERING_UP_PIN)) {
     delay(CHECK_WAIT);
     if (digitalRead(STEERING_UP_PIN)) {
@@ -534,6 +508,7 @@ void count_steering_up(void) {
 
 // Check Steering Down() --> Increases/decreases the steering sensitivity
 void count_steering_down(void) {
+  //Serial.println(digitalRead(STEERING_DOWN_PIN));
   if (digitalRead(STEERING_DOWN_PIN)) {
     delay(CHECK_WAIT);
     if (digitalRead(STEERING_DOWN_PIN)) {

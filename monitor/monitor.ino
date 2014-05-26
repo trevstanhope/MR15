@@ -14,8 +14,8 @@
 #define FUEL_PIN 2
 #define ENGINE_PIN 3
 #define DHT_PIN 4
-#define DS18B20_PIN 7
-#define DHT_TYPE DHT22
+#define DS18B20_PIN 5
+#define DHT_TYPE DHT11
 #define DIGITS 4
 #define PRECISION 2
 
@@ -25,16 +25,15 @@
 
 /* --- Constants --- */
 const int SERIAL_BAUD = 9600;
-const int SERIAL_WAIT = 1000; // wait 1000ms before engaging the serial connection
+const int SERIAL_WAIT = 10000; // wait 10s before engaging the serial connection
 const int INTERVAL = 1000; // sample interval
 const int BUFFER_SIZE = 128; // buffer length
 const int SENSOR_SIZE = 5;
 
 /* --- Functions --- */
 float get_box_temp(void);
-float get_box_humidity(void);
-float get_engine_lph(int start);
-float get_engine_rpm(int start);
+float get_engine_lph(void);
+float get_engine_rpm(void);
 float get_engine_temp(void);
 void count_fuel(void);
 void count_engine(void);
@@ -47,12 +46,14 @@ DHT dht(DHT_PIN, DHT_TYPE);
 /* --- Variables --- */
 volatile int LPH_COUNT = 0;
 volatile int RPM_COUNT = 0;
-volatile int TIME = 0;
+int LPH_A = 0;
+int LPH_B = 0;
+int RPM_A = 0;
+int RPM_B = 0;
 
 /* --- Buffers --- */
 char SENSORS[BUFFER_SIZE];
 char BOX_TEMP[SENSOR_SIZE];
-char BOX_RH[SENSOR_SIZE];
 char ENGINE_RPM[SENSOR_SIZE];
 char ENGINE_LPH[SENSOR_SIZE];
 char ENGINE_TEMP[SENSOR_SIZE];
@@ -60,8 +61,6 @@ char ENGINE_TEMP[SENSOR_SIZE];
 /* --- Setup --- */
 void setup() {
   delay(SERIAL_WAIT);
-  pinMode(FUEL_PIN, INPUT);
-  pinMode(ENGINE_PIN, INPUT);
   Serial.begin(SERIAL_BAUD);
   attachInterrupt(FUEL_INT, count_fuel, RISING); // Whenever an interrupt is detected, call the respective counter function
   attachInterrupt(ENGINE_INT, count_engine, RISING);
@@ -72,12 +71,10 @@ void setup() {
 /* --- Loop --- */
 void loop() {
   dtostrf(get_box_temp(), DIGITS, PRECISION, BOX_TEMP); 
-  dtostrf(get_box_humidity(), DIGITS, PRECISION, BOX_RH);
-  dtostrf(get_engine_rpm(TIME), DIGITS, PRECISION, ENGINE_RPM);
-  dtostrf(get_engine_lph(TIME), DIGITS, PRECISION, ENGINE_LPH);
+  dtostrf(get_engine_rpm(), DIGITS, PRECISION, ENGINE_RPM);
+  dtostrf(get_engine_lph(), DIGITS, PRECISION, ENGINE_LPH);
   dtostrf(get_engine_temp(), DIGITS, PRECISION, ENGINE_TEMP);
-  TIME = millis();
-  sprintf(SENSORS, "{'box_temp':%s,'box_rh':%s,'engine_lph':%s,'engine_rpm':%s,'engine_temp':%s}", BOX_TEMP, BOX_RH, ENGINE_LPH, ENGINE_RPM, ENGINE_TEMP); // Convert to string and send over serial
+  sprintf(SENSORS, "{'box_temp':%s,'engine_lph':%s,'engine_rpm':%s,'engine_temp':%s}", BOX_TEMP, ENGINE_LPH, ENGINE_RPM, ENGINE_TEMP); // Convert to string and send over serial
   Serial.println(SENSORS);
   delay(INTERVAL);
 }
@@ -86,17 +83,6 @@ void loop() {
 // Get Temp() --> Returns the temperature inside the box
 float get_box_temp(void) {
   float val = dht.readTemperature();
-  if (isnan(val)) {
-    return 0;
-  }
-  else {
-    return val;
-  }
-}
-
-// Get Humidity --> Returns the humidity inside the box
-float get_box_humidity(void) {
-  float val;
   if (isnan(val)) {
     return 0;
   }
@@ -118,16 +104,20 @@ float get_engine_temp(void) {
 }
 
 // Get Fuel LPH() --> Returns LPH of fuel
-float get_engine_lph(int start) {
-  float val = LPH_COUNT / float(millis() - start);
+float get_engine_lph(void) {
+  LPH_B = millis();
+  float val = (float(LPH_COUNT) * 0.00038 * 3600.0) / (float(LPH_B - LPH_A) / 1000.0);
   LPH_COUNT = 0;
+  LPH_A = millis();
   return val;
 }
 
 // Get Engine RPM --> Returns RPM of engine
-float get_engine_rpm(int start) {
-  float val = RPM_COUNT / float(millis() - start);
+float get_engine_rpm(void) {
+  RPM_B = millis();
+  float val = (float(RPM_COUNT) * 60.0) / (float(RPM_B - RPM_A) / 1000.0);
   RPM_COUNT = 0;
+  RPM_A = millis();
   return val;
 }
 
