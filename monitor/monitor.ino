@@ -8,7 +8,6 @@
 #include "DallasTemperature.h" // needed for DS18B20
 #include "OneWire.h" // needed for DS18B20
 #include "stdio.h" // needed for dtostrf()
-#include "DHT.h" // needed for box conditions
 
 /* --- Pins --- */
 #define FUEL_PIN 2

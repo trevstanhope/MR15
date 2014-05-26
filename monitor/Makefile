@@ -14,5 +14,5 @@ ARDUINO_DIR = /usr/share/arduino
 TARGET = monitor
 BOARD_TAG = alamode # alamode
 ARDUINO_PORT = /dev/ttyS0 # /dev/ttyS0
-ARDUINO_LIBS = DHT stdio DallasTemperature OneWire
+ARDUINO_LIBS = stdio DallasTemperature OneWire
 include /usr/share/arduino/Arduino.mk
