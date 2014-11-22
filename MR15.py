@@ -6,8 +6,7 @@ Developed by Macdonald Campus ASABE Tractor Pull Team
 
 TODO:
     - Improve GUI
-        - Add speedometer for wheel rpm
-        - Add gauge for fuel rate
+    - User Logging
 """
 
 # Modules
@@ -16,13 +15,14 @@ import json
 import serial
 import Tkinter as tk
 import time
+from datetime import datetime
 
 # Global
 MONITOR_DEV = '/dev/ttyACM0' # '/dev/ttyS0'
 CONTROLLER_DEV = '/dev/ttyACM1' # '/dev/ttyACM0'
 MONITOR_BAUD = 9600
 CONTROLLER_BAUD = 9600
-SERIAL_TIMEOUT = 0.1
+SERIAL_TIMEOUT = 0.01
 
 # Control system class
 class Tractor:
@@ -45,10 +45,10 @@ class Tractor:
             literal = self.monitor.readline()
             print('\tBuffer: ' + str(literal))
             response = ast.literal_eval(literal)
-            print('\tPARSE OKAY')
+            print('\tParsing: OKAY')
             return response
         except Exception as error:
-            print('\tEMU READ ERROR: ' + str(error))
+            print('\tERROR: ' + str(error))
             
     def check_controller(self):
         print('[Getting ECU State]')
@@ -56,10 +56,10 @@ class Tractor:
             literal = self.controller.readline()
             print('\tBuffer: ' + str(literal))
             response = ast.literal_eval(literal)
-            print('\tPARSE OKAY')
+            print('\tParsing: OKAY')
             return response
         except Exception as error:
-            print('\tECU READ ERROR: ' + str(error))
+            print('\tERROR: ' + str(error))
 
 # Display system 
 class Display(object):
@@ -77,6 +77,8 @@ class Display(object):
         
     def set_layout(self):
         print('[Setting Layout]')
+        
+        ## Global Layout
         self.master.overrideredirect(True) # make fullscreen
         self.master.focus_set()
         self.master.state("normal")
@@ -129,18 +131,6 @@ class Display(object):
         engine_temp_label.pack()
         engine_temp_label.place(x=20, y=120)
         
-#        ## Humidity Label
-#        self.vps_temp_var = tk.StringVar()
-#        self.vps_temp_var.set('VPS Temperature (C): ?')
-#        vps_temp_label = tk.Label(
-#            self.master,
-#            textvariable=self.vps_temp_var,
-#            font=("Helvetica", 24),
-#            bg="#FFFFFF"
-#        )
-#        vps_temp_label.pack()
-#        vps_temp_label.place(x=20, y=160)
-        
         ## ECU Label
         self.ecu_var = tk.StringVar()
         self.ecu_var.set('ECU: Initializing')
@@ -167,7 +157,7 @@ class Display(object):
         
         ## State Label
         self.state_var = tk.StringVar()
-        self.state_var.set('State: ?')
+        self.state_var.set('Engine: ?')
         state_label = tk.Label(
             self.master,
             textvariable=self.state_var,
@@ -201,72 +191,118 @@ class Display(object):
         ballast_label.pack()
         ballast_label.place(x=20, y=360)
         
-    def update(self, monitor, control):
+        ## Time Label
+        self.time_var = tk.StringVar()
+        self.time_var.set('Run Time: ?')
+        time_label = tk.Label(
+            self.master,
+            textvariable=self.time_var,
+            font=("Helvetica", 24),
+            bg="#FFFFFF"
+        )
+        time_label.pack()
+        time_label.place(x=480, y=0)
+        
+        ## Time Label
+        self.user_var = tk.StringVar()
+        self.user_var.set('User: ?')
+        user_label = tk.Label(
+            self.master,
+            textvariable=self.user_var,
+            font=("Helvetica", 24),
+            bg="#FFFFFF"
+        )
+        user_label.pack()
+        user_label.place(x=480, y=40)
+        
+    def update(self, tractor, monitor, control):
         print('[Updating Display]')
     
         ## Set EMU labels
         if (monitor):
             self.emu_var.set('EMU: Okay')
             try:
-              self.fuel_var.set('Fuel Rate (L/H): ' + str(monitor['engine_lph']))
-              self.wheel_var.set('Engine Rate (RPM): ' + str(monitor['engine_rpm']))
-              self.engine_temp_var.set('Engine Temperature (C): ' + str(monitor['engine_temp']))
-              #self.vps_temp_var.set('VPS Temperature (RH): ' + str(monitor['box_temp']))
+              self.fuel_var.set('Fuel Rate (L/H): %s' % str(monitor['engine_lph']))
+              self.wheel_var.set('Engine Rate (RPM): %s' % str(monitor['engine_rpm']))
+              self.engine_temp_var.set('Engine Temperature (C): %s' % str(monitor['engine_temp']))
             except Exception as err:
-              self.emu_var.set('EMU: Error Setting Values')
+              pass
         else:
             self.emu_var.set('EMU: Waiting')
             
         ## Set ECU labels
         if (control):
             self.ecu_var.set('ECU: Okay')
+            
+            ### Kill Warnings
+            try:
+                if control['button']:
+                    self.warnings_var('Warnings: Kill button pressed')
+                elif control['hitch']:
+                    self.warnings_var('Warnings: Hitch detached')
+                elif control['seat']:
+                    self.warnings_var('Warnings: No operator in seat')
+                else:
+                    self.warnings_var('Warnings: None')
+            except Exception:
+                pass
+                
+            ### Engine State
             try:
                 if control['state'] == 0:
-                    state = 'OFF'
-                    if control['button']:
-                        self.warnings_var('Warnings: Kill button pressed')
-                    elif control['hitch']:
-                        self.warnings_var('Warnings: Hitch detached')
-                    elif control['seat']:
-                        self.warnings_var('Warnings: No operator in seat')
+                    self.state_var.set('Engine: %s' % 'OFF')
                 elif control['state'] == 1:
-                    state = 'STANDBY'
+                    self.state_var.set('Engine: %s' % 'ENGAGED')
+                    self.user_var.set('User: %s' % 'Trevor Stanhope')
                     if control['ignition'] and not control['guard']:
                         self.warnings_var('Warnings: CVT guard open')
                     elif control['ignition'] and not control['brakes']:
                         self.warnings_var('Warnings: Brakes not engaged')
                 elif control['state'] == 2:
-                    state = 'RUNNING'
-                self.state_var.set('State: ' + state)
+                    self.state_var.set('Engine: %s' % 'RUNNING')
             except Exception:
-                self.ecu_var.set('ECU: Engine State')
+                pass
+            
+            ### Steering
             try:
-                self.steering_var.set('Steering Sensitivity: ' + str(control['str_spd']))
+                self.steering_var.set('Steering Sensitivity: %s' % str(control['str_spd']))
             except Exception:
-                self.ecu_var.set('ECU: NO STEERING SENSITIVITY FOUND')
+                self.warning_var.set('Warnings: Failed to get sensitivity')
+                
+            ### Ballast
             try:
-                self.ballast_var.set('Ballast Speed: ' + str(control['bal_spd']))
+                self.ballast_var.set('Ballast Speed: %s' % str(control['bal_spd']))
             except Exception:
-                self.ecu_var.set('NO BALLAST SPEED FOUND')
+                self.warning_var.set('Warnings: Failed to get ballast speed')
         else:
             self.ecu_var.set('ECU: Waiting')
+        
+        ### Running Time
+        self.time_var.set('On Time: %s' % str(datetime.now() - tractor.on_time))
+            
+        ## Update all changes
         self.master.update_idletasks()
 
 # Main Loop
 if __name__ == '__main__':
+
+    ## Initialize Display
     try:
         root = tk.Tk()
-        root.config(background = "#FFFFFF") #sets background color to white
+        root.config(background = "#FFFFFF") # sets background color to white
         display = Display(root)
         GTK = True
     except Exception as err:
        print('NO GTK')
        GTK = False
+       
+    ## Run Tractor
     tractor = Tractor()
+    tractor.on_time = datetime.now()
     while True:
         try:
             monitor = tractor.check_monitor()
             control = tractor.check_controller()
-            if GTK: display.update(monitor, control)
+            if GTK: display.update(tractor, monitor, control)
         except KeyboardInterrupt:
             break

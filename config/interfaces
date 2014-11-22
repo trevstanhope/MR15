@@ -4,14 +4,18 @@
 # Local
 auto lo
 iface lo inet loopback
-iface eth0 inet dhcp
+
+# Ethernet
+auto eth0
+iface eth0 inet static
+    address 192.168.1.1
 
 # Ad-hoc
 auto wlan0
 allow-hotplug wlan0
 iface wlan0 inet static
-wireless-essid MR15
-wireless-mode managed
-gateway 10.42.0.1
-address 10.42.0.3
-netmask 255.255.255.0
+    wireless-essid MR15
+    wireless-mode managed
+    gateway 10.42.0.1
+    address 10.42.0.3
+    netmask 255.255.255.0

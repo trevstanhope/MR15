@@ -1,4 +1,4 @@
-/*
+ /*
   Control subsystem for MR15
   MEGA 2560
   Handles vehicle steering, dynamic ballast and engine
@@ -17,6 +17,15 @@
     5. If not received --> allow steering.
    
 */
+
+
+/* --- OVERRIDES --- */
+boolean OVERRIDE_SEAT = true;
+boolean OVERRIDE_HITCH = true;
+boolean OVERRIDE_BUTTON = true;
+boolean OVERRIDE_RFID = true;
+boolean OVERRIDE_BRAKES = true;
+boolean OVERRIDE_GUARD = true;
 
 /* --- Libraries --- */
 #include <DualVNH5019MotorShield.h>
@@ -94,11 +103,14 @@ void count_steering_down(void);
 /* --- Constants --- */
 const int USB_BAUD = 9600;
 const int RFID_BAUD = 9600;
-const int IGNITION_WAIT = 800;
+const int IGNITION_WAIT = 250;
 const int BALLAST_WAIT = 200;
 const int STEERING_WAIT = 200;
-const int KILL_WAIT = 500; 
-const int CHECK_WAIT = 1; // check things
+const int KILL_WAIT = 2000; 
+const int CHECK_WAIT = 10;
+const int HITCH_WAIT = 50; // check things
+const int SEAT_WAIT = 50;
+const int BUTTON_WAIT = 50;
 const int STANDBY_WAIT = 20;
 const int MOTORS_WAIT = 20;
 const int BUFFER_SIZE = 512;
@@ -114,10 +126,11 @@ const int STEERING_LEFT = 1023;
 const int COEF_P = 3;
 const int COEF_I = 1;
 const int COEF_D = 0;
-const int BALLAST_MULTIPLIER = 50;
+const int BALLAST_MULTIPLIER = 200;
 const int ACTUATOR_SPEED = 400;
 const int NOISE = 30;
-const int BALLAST_THRESHOLD = 10000;
+const int BALLAST_THRESHOLD = 20000;
+const int ERROR_COEF = 50;
 
 /* --- Objects --- */
 DualVNH5019MotorShield MOTORS;
@@ -139,6 +152,7 @@ volatile float ACTUATOR_PERCENT = 0;
 volatile int STEERING_SPEED = STEERING_MIN;
 volatile int BALLAST_SPEED = 0;
 volatile float ERROR = 0;
+volatile float INTEGRAL = 0;
 volatile int DUTY_CYCLE = 0;
 volatile int STATE = 0;
 volatile int DT = 0;
@@ -197,7 +211,6 @@ void setup() {
 
 /* --- Loop --- */
 void loop() {
-  int a = millis();
   SEAT = check_seat();
   HITCH = check_hitch();
   BUTTON = check_button();
@@ -221,11 +234,13 @@ void loop() {
   else if (STATE == 1) {
     if (SEAT || HITCH || BUTTON) {
       kill(); // kill engine
-      STATE = 1;
     }
     else if (IGNITION && !BRAKES && !GUARD) {
       ignition(); // execute ignition
       STATE = 2;
+    }
+    else {
+      standby();
     }
   }
   // If in State 2 (RUNNING)
@@ -238,7 +253,7 @@ void loop() {
   }
   // If in State ? (UNKNOWN)
   else {
-    STATE = 0;
+    STATE = 1;
   }
   steering();
   ballast();
@@ -246,8 +261,6 @@ void loop() {
   // Print to serial
   sprintf(BUFFER,"{'bal_spd':%d,'str_spd':%d,'str_pos':%d,'act_pos':%d,'seat':%d,'brakes':%d,'guard':%d,'hitch':%d,'button':%d,'ignition':%d,'rfid':%d, 'state':%d}",BALLAST_SPEED,STEERING_SPEED,STEERING_POSITION,ACTUATOR_POSITION,SEAT,BRAKES,GUARD,HITCH,BUTTON,IGNITION,RFID,STATE);
   Serial.println(BUFFER);
-  int b = millis();
-  DT = (b-a);
 }
 
 /* --- Engine State Functions --- */
@@ -255,7 +268,6 @@ void loop() {
 void kill(void) {
   MOTORS.setM1Speed(0);
   MOTORS.setM2Speed(0);
-  delay(MOTORS_WAIT);
   digitalWrite(STOP_RELAY_PIN, HIGH);
   digitalWrite(STARTER_RELAY_PIN, HIGH);
   digitalWrite(REGULATOR_RELAY_PIN, HIGH);
@@ -275,13 +287,16 @@ void standby(void) {
 
 // Ignition() --> Ignition sequence
 void ignition(void) {
+  Serial.println('ignition');
   MOTORS.setM1Speed(0);
   MOTORS.setM2Speed(0);
   delay(MOTORS_WAIT);
-  digitalWrite(STOP_RELAY_PIN, LOW);
-  digitalWrite(REGULATOR_RELAY_PIN, LOW);
-  digitalWrite(STARTER_RELAY_PIN, LOW);
-  delay(IGNITION_WAIT);
+  while (check_ignition()) {
+    digitalWrite(STOP_RELAY_PIN, LOW);
+    digitalWrite(REGULATOR_RELAY_PIN, LOW);
+    digitalWrite(STARTER_RELAY_PIN, LOW);
+    delay(IGNITION_WAIT);
+  }
   digitalWrite(STOP_RELAY_PIN, LOW);
   digitalWrite(REGULATOR_RELAY_PIN, LOW);
   digitalWrite(STARTER_RELAY_PIN, HIGH);
@@ -313,19 +328,13 @@ void steering(void) {
   
   // Calculate PID
   ERROR = STEERING_PERCENT - ACTUATOR_PERCENT;
-  DUTY_CYCLE = 20 * ERROR;
+  DUTY_CYCLE = ERROR_COEF * ERROR;
   if (DUTY_CYCLE > 400) {
     DUTY_CYCLE = 400;
   }
   else if (DUTY_CYCLE < -400) {
     DUTY_CYCLE = -400;
-  }
-  else if (abs(DUTY_CYCLE) < NOISE) {
-    DUTY_CYCLE = 0;
-  }
-  
-  // Serial.println(ERROR);
-  // Serial.println(DUTY_CYCLE);
+  }  
   MOTORS.setM1Speed(DUTY_CYCLE);
 }
 
@@ -361,17 +370,23 @@ void ballast(void) {
   else {
     MOTORS.setM2Speed(0);
   }
+  //Serial.println(MOTORS.getM2CurrentMilliamps());
 }
 
 /* --- Check Functions --- */
 // Check RFID() --> Returns true if RFID detected
 boolean check_rfid(void) {
-  Serial3.write(READ);
-  if (Serial3.read() >= 0) {
+  if (OVERRIDE_RFID) {
     return true;
   }
   else {
-    return false;
+    Serial3.write(READ);
+    if (Serial3.read() >= 0) {
+      return true;
+    }
+    else {
+      return false;
+    }
   }
 }
 
@@ -393,82 +408,108 @@ boolean check_ignition(void) {
 
 // Check Seat() --> Returns true if seat kill engaged
 boolean check_seat(void) {
-  if (digitalRead(SEAT_KILL_PIN)) {
-    delay(CHECK_WAIT);
+  if (OVERRIDE_SEAT) {
+    return false;
+  }
+  else {
     if (digitalRead(SEAT_KILL_PIN)) {
-      return true;
+      delay(SEAT_WAIT);
+      if (digitalRead(SEAT_KILL_PIN)) {
+        return true;
+      }
+      else {
+        return false;
+      }
     }
     else {
       return false;
     }
-  }
-  else {
     return false;
   }
 }
 
 // Check Hitch() --> Returns true if hitch kill engaged
 boolean check_hitch(void) {
-  if (digitalRead(HITCH_KILL_PIN)) {
-    delay(CHECK_WAIT);
+  if (OVERRIDE_HITCH) {
+    return false;
+  }
+  else {
     if (digitalRead(HITCH_KILL_PIN)) {
-      return true;
+      delay(HITCH_WAIT);
+      if (digitalRead(HITCH_KILL_PIN)) {
+        return true;
+      }
+      else {
+        return false;
+      }
     }
     else {
       return false;
     }
-  }
-  else {
-    return false;
   }
 }
 
 // Check Button() --> Returns true if button kill engaged
 boolean check_button(void) {
-  if (digitalRead(BUTTON_KILL_PIN)) {
-    delay(CHECK_WAIT);
+  if (OVERRIDE_BUTTON) {
+    return false;
+  }
+  else {
     if (digitalRead(BUTTON_KILL_PIN)) {
-      return true;
+      delay(BUTTON_WAIT);
+      if (digitalRead(BUTTON_KILL_PIN)) {
+        return true;
+      }
+      else {
+        return false;
+      }
     }
     else {
       return false;
     }
-  }
-  else {
-    return false;
   }
 }
 
-// Check Brakes() --> Returns true if brakes engaged
+// Check Brakes() --> Returns true if brakes not engaged
 boolean check_brakes(void) {
-  if (digitalRead(BRAKES_PIN)) {
-    delay(CHECK_WAIT);
+  if (OVERRIDE_BRAKES) {
+    return false;
+  }
+  else {
     if (digitalRead(BRAKES_PIN)) {
-      return true;
+      delay(CHECK_WAIT);
+      if (digitalRead(BRAKES_PIN)) {
+        return true;
+      }
+      else {
+        return false;
+      }
     }
     else {
       return false;
     }
-  }
-  else {
-    return false;
   }
 }
 
 // Check Guard() --> Returns true if guard open
 boolean check_guard(void) {
-  //Serial.println(analogRead(GUARD_PIN));
-  if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
-    delay(CHECK_WAIT);
+  if (OVERRIDE_GUARD) { 
+    return false;
+  }
+  else {
+    //Serial.println(analogRead(GUARD_PIN));
     if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
-      return true;
+      delay(CHECK_WAIT);
+      if (analogRead(GUARD_PIN) <= LIGHT_THRESHOLD) {
+        return true;
+      }
+      else {
+        return false;
+      }
     }
     else {
       return false;
     }
-  }
-  else {
-    return false;
   }
 }
 

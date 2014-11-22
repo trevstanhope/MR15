@@ -65,8 +65,11 @@ void setup() {
 /* --- Loop --- */
 void loop() {
   dtostrf(get_engine_rpm(), DIGITS, PRECISION, ENGINE_RPM);
+  delay(100);
   dtostrf(get_engine_lph(), DIGITS, PRECISION, ENGINE_LPH);
+  delay(100);
   dtostrf(get_engine_temp(), DIGITS, PRECISION, ENGINE_TEMP);
+  delay(100);
   sprintf(SENSORS, "{'engine_lph':%s,'engine_rpm':%s,'engine_temp':%s}", ENGINE_LPH, ENGINE_RPM, ENGINE_TEMP); // Convert to string and send over serial
   Serial.println(SENSORS);
   delay(INTERVAL);
