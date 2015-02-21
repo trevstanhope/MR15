@@ -316,7 +316,7 @@ void steering(void) {
   }
   
   // Read Current positions of Actuator and Steering wheel
-  STEERING_POSITION = analogRead(STEERING_POT_PIN);
+  STEERING_POSITION = 1024 - analogRead(STEERING_POT_PIN);
   ACTUATOR_POSITION = analogRead(ACTUATOR_POT_PIN);
   STEERING_PERCENT = 100.0 * STEERING_SPEED * (float(STEERING_POSITION - STEERING_RIGHT) / float(STEERING_LEFT - STEERING_RIGHT));
   if (STEERING_PERCENT > 100) { 
